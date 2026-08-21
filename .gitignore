@@ -1,0 +1,89 @@
+# ==============================================================================
+# SENSITIVE ENVIRONMENT VARIABLES & SECRETS (NEVER COMMIT)
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.env
+server/.env
+server/.env.*
+!server/.env.example
+*.pem
+*.key
+*.cert
+*.crt
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# ==============================================================================
+# DEPENDENCIES & PACKAGE MANAGER CACHES
+# ==============================================================================
+node_modules/
+server/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp
+.pnp.js
+
+# ==============================================================================
+# LARGE MEDIA & VIDEO FILES
+# ==============================================================================
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+VID_*
+server/public/videos/
+
+# ==============================================================================
+# LOCAL DATABASES & SCRIPTS WITH SECRETS
+# ==============================================================================
+server/data/*.json
+test_*.js
+server/test_*.js
+
+# ==============================================================================
+# ANDROID BUILD ARTIFACTS & LOCAL SDK PATHS
+# ==============================================================================
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/*.iml
+android/.idea/
+*.keystore
+*.jks
+android/app/*.keystore
+android/app/*.jks
+
+# ==============================================================================
+# IOS BUILD ARTIFACTS & PODS
+# ==============================================================================
+ios/Pods/
+ios/build/
+ios/*.xcworkspace
+ios/*.xcuserdata
+ios/Podfile.lock
+
+# ==============================================================================
+# SYSTEM & IDE CONFIGURATIONS
+# ==============================================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ==============================================================================
+# METRO & REACT NATIVE BUILD ARTIFACTS
+# ==============================================================================
+.metro/
+dist/
+build/
+.expo/
+*.tsbuildinfo

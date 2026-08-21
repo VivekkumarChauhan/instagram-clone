@@ -1,0 +1,128 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  ViewToken,
+  StatusBar,
+  FlatList,
+} from 'react-native';
+import { ReelItem } from '@components/reels/ReelItem';
+import { Loader } from '@components/common/Loader';
+import { NetworkBanner } from '@components/common/NetworkBanner';
+import {
+  useReelsStore,
+  selectReels,
+  selectCurrentIndex,
+  selectIsMuted,
+  selectIsReelsLoading,
+  selectReelsError,
+} from '@store/reelsStore';
+import { useNetwork } from '@hooks/useNetwork';
+import { useAppState } from '@hooks/useAppState';
+import type { Reel } from '@appTypes/reels';
+
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+
+export const ReelsScreen: React.FC = () => {
+  const [containerHeight, setContainerHeight] = useState(SCREEN_HEIGHT - 60);
+  const reels = useReelsStore(selectReels);
+  const currentIndex = useReelsStore(selectCurrentIndex);
+  const isMuted = useReelsStore(selectIsMuted);
+  const isLoading = useReelsStore(selectIsReelsLoading);
+  const error = useReelsStore(selectReelsError);
+  const loadInitialReels = useReelsStore(s => s.loadInitialReels);
+  const setCurrentIndex = useReelsStore(s => s.setCurrentIndex);
+  const toggleMute = useReelsStore(s => s.toggleMute);
+  const checkAndFetchMore = useReelsStore(s => s.checkAndFetchMore);
+
+  const { isOnline } = useNetwork();
+  const listRef = useRef<FlatList<Reel>>(null);
+
+  useEffect(() => {
+    loadInitialReels();
+  }, [loadInitialReels]);
+
+  useAppState(
+    useCallback(() => {
+      if (isOnline) loadInitialReels();
+    }, [isOnline, loadInitialReels]),
+  );
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && typeof viewableItems[0].index === 'number') {
+        const newIndex = viewableItems[0].index;
+        setCurrentIndex(newIndex);
+        checkAndFetchMore(newIndex);
+      }
+    }
+  ).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 70,
+  }).current;
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: Reel; index: number }) => (
+      <View style={{ width: SCREEN_WIDTH, height: containerHeight }}>
+        <ReelItem
+          reel={item}
+          isActive={index === currentIndex}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+        />
+      </View>
+    ),
+    [currentIndex, isMuted, toggleMute, containerHeight],
+  );
+
+  const keyExtractor = useCallback((item: Reel) => item.id, []);
+
+  if (isLoading && reels.length === 0) {
+    return <Loader fullScreen message="Loading reels..." />;
+  }
+
+  if (error && reels.length === 0) {
+    return <Loader fullScreen message={error} />;
+  }
+
+  return (
+    <View
+      style={styles.container}
+      onLayout={e => {
+        const { height } = e.nativeEvent.layout;
+        if (height > 0) setContainerHeight(height);
+      }}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <NetworkBanner />
+      <FlatList
+        ref={listRef}
+        data={reels}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        getItemLayout={(_, index) => ({
+          length: containerHeight,
+          offset: containerHeight * index,
+          index,
+        })}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+});

@@ -20,6 +20,9 @@ import type { ChatScreenProps } from '@appTypes/navigation';
 
 type Props = ChatScreenProps<'ChatSearch'>;
 
+import Icon from 'react-native-vector-icons/Ionicons';
+import { Platform } from 'react-native';
+
 export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
   const searchResults = useChatStore(selectSearchResults);
   const isSearching = useChatStore(selectIsSearching);
@@ -105,26 +108,31 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Icon name="arrow-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
         <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Icon name="search-outline" size={18} color="#8E8E93" style={styles.searchIcon} />
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search people..."
+            placeholder="Search creators & friends..."
             placeholderTextColor="#8E8E93"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={handleClear}>
-              <Text style={styles.clearIcon}>✕</Text>
+            <TouchableOpacity onPress={handleClear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Icon name="close-circle" size={18} color="#8E8E93" />
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cancelBtn}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -174,30 +182,41 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 4 : 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 10,
+    gap: 8,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  cancelBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
   searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1C1C1E',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 40,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
     gap: 8,
     borderWidth: 1,
     borderColor: '#3A3A3C',
   },
-  searchIcon: { fontSize: 14 },
-  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15 },
-  clearIcon: { color: '#8E8E93', fontSize: 14, padding: 4 },
-  cancelText: { color: '#E1306C', fontSize: 15, fontWeight: '500' },
+  searchIcon: { marginRight: 2 },
+  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 0 },
+  clearIcon: { padding: 4 },
+  cancelText: { color: '#E1306C', fontSize: 15, fontWeight: '600' },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',

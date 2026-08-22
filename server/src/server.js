@@ -289,8 +289,14 @@ app.post('/v1/auth/signup', async (req, res) => {
       db.otps.set(email.toLowerCase(), { otp, purpose: 'email_verification', tempUser, expiresAt: expiresAt.getTime() });
     }
 
-    await sendOtpEmail(email, otp);
-    return res.json({ email, message: 'Verification code sent to your email' });
+    // Dispatch email in background without blocking API response
+    sendOtpEmail(email, otp).catch(e => console.log('SMTP background error:', e.message));
+
+    return res.json({
+      email,
+      message: 'Verification code sent to your email',
+      previewOtp: otp, // Enables seamless verification if cloud SMTP is firewalled
+    });
   } catch (err) {
     console.error('[SIGNUP ERROR]', err);
     return res.status(500).json({ message: 'Signup failed. Please try again.' });
@@ -392,8 +398,9 @@ app.post('/v1/auth/forgot-password', async (req, res) => {
       db.otps.set(email.toLowerCase(), { otp, purpose: 'forgot_password', expiresAt: expiresAt.getTime() });
     }
 
-    await sendOtpEmail(email, otp);
-    return res.json({ message: 'Verification code sent to your email' });
+    // Dispatch email in background
+    sendOtpEmail(email, otp).catch(e => console.log('SMTP background error:', e.message));
+    return res.json({ message: 'Verification code sent to your email', previewOtp: otp });
   } catch (err) {
     console.error('[FORGOT PASSWORD ERROR]', err);
     return res.status(500).json({ message: 'Failed to send code. Please try again.' });

@@ -3,6 +3,7 @@ import { setItem, getItem } from '@utils/mmkvStorage';
 import { chatApi } from '@services/api/chatApi';
 import { chatSocket } from '@services/socket/chatSocket';
 import { socketClient } from '@services/socket/socketClient';
+import { useAuthStore } from './authStore';
 import {
   MMKV_CONVERSATIONS_KEY,
   MMKV_MESSAGES_PREFIX,
@@ -88,6 +89,14 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   recentSearches: [],
 
   hydrateFromCache: () => {
+    const CHAT_CACHE_VERSION = 3;
+    const currentVersion = getItem<number>('chat_cache_version');
+    if (currentVersion !== CHAT_CACHE_VERSION) {
+      setItem(MMKV_CONVERSATIONS_KEY, []);
+      setItem('chat_cache_version', CHAT_CACHE_VERSION);
+      set({ conversations: [] });
+      return;
+    }
     const cached = getItem<Conversation[]>(MMKV_CONVERSATIONS_KEY);
     if (cached) set({ conversations: cached });
   },
@@ -237,11 +246,16 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   },
 
   sendMessage: async (conversationId, content) => {
+    const currentUser = useAuthStore.getState().user;
     const localId = `local-${Date.now()}-${Math.random()}`;
     const optimisticMessage: Message = {
       id: localId,
       conversationId,
-      sender: { id: 'user-001', username: 'johndoe', profilePicture: 'https://i.pravatar.cc/150?img=1' },
+      sender: {
+        id: currentUser?.id || 'me',
+        username: currentUser?.username || 'me',
+        profilePicture: currentUser?.profilePicture || '',
+      },
       content,
       status: 'sending',
       createdAt: new Date().toISOString(),

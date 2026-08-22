@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { useChatStore, selectSearchResults, selectIsSearching, selectRecentSearches } from '@store/chatStore';
+import { chatApi } from '@services/api/chatApi';
 import { useDebounce } from '@hooks/useDebounce';
 import { SEARCH_DEBOUNCE_MS, SEARCH_MIN_CHARS } from '@utils/constants';
 import type { UserSearchResult } from '@appTypes/chat';
@@ -51,14 +52,24 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
   }, [debouncedQuery, searchUsers, clearSearch]);
 
   const handleUserPress = useCallback(
-    (user: UserSearchResult) => {
+    async (user: UserSearchResult) => {
       addRecentSearch(user);
-      const conversationId = `conv-${user.id}`;
-      navigation.navigate('ChatDetail', {
-        conversationId,
-        participantName: user.username,
-        participantAvatar: user.profilePicture,
-      });
+      try {
+        const res = await chatApi.createOrGetConversation(user.id);
+        const conversationId = (res.conversation as any)._id || res.conversation.id;
+        navigation.navigate('ChatDetail', {
+          conversationId,
+          participantName: user.username,
+          participantAvatar: user.profilePicture,
+        });
+      } catch {
+        const conversationId = `conv-${user.id}`;
+        navigation.navigate('ChatDetail', {
+          conversationId,
+          participantName: user.username,
+          participantAvatar: user.profilePicture,
+        });
+      }
     },
     [addRecentSearch, navigation],
   );
@@ -72,7 +83,10 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
   const renderUserItem = useCallback(
     ({ item }: { item: UserSearchResult }) => (
       <TouchableOpacity style={styles.userItem} onPress={() => handleUserPress(item)}>
-        <Image source={{ uri: item.profilePicture }} style={styles.userAvatar} />
+        <Image
+          source={{ uri: item.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+          style={styles.userAvatar}
+        />
         <View style={styles.userInfo}>
           <Text style={styles.username}>{item.username}</Text>
           <Text style={styles.fullName}>{item.fullName}</Text>

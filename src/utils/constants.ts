@@ -1,5 +1,5 @@
-export const API_BASE_URL = 'http://localhost:5000/v1';
-export const SOCKET_URL = 'http://localhost:5000';
+import { API_BASE_URL, SOCKET_URL } from '../config';
+export { API_BASE_URL, SOCKET_URL };
 
 export const REELS_PAGE_SIZE = 5;
 export const REELS_PREFETCH_THRESHOLD = 3;

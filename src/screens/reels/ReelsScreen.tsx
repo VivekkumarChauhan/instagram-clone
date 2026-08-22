@@ -22,10 +22,19 @@ import { useNetwork } from '@hooks/useNetwork';
 import { useAppState } from '@hooks/useAppState';
 import type { Reel } from '@appTypes/reels';
 
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabParamList } from '@appTypes/navigation';
+import { Text, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { COLORS } from '@utils/constants';
+
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const ReelsScreen: React.FC = () => {
   const [containerHeight, setContainerHeight] = useState(SCREEN_HEIGHT - 60);
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const isFocused = useIsFocused();
   const reels = useReelsStore(selectReels);
   const currentIndex = useReelsStore(selectCurrentIndex);
   const isMuted = useReelsStore(selectIsMuted);
@@ -68,13 +77,13 @@ export const ReelsScreen: React.FC = () => {
       <View style={{ width: SCREEN_WIDTH, height: containerHeight }}>
         <ReelItem
           reel={item}
-          isActive={index === currentIndex}
+          isActive={isFocused && index === currentIndex}
           isMuted={isMuted}
           onToggleMute={toggleMute}
         />
       </View>
     ),
-    [currentIndex, isMuted, toggleMute, containerHeight],
+    [isFocused, currentIndex, isMuted, toggleMute, containerHeight],
   );
 
   const keyExtractor = useCallback((item: Reel) => item.id, []);
@@ -83,8 +92,24 @@ export const ReelsScreen: React.FC = () => {
     return <Loader fullScreen message="Loading reels..." />;
   }
 
-  if (error && reels.length === 0) {
-    return <Loader fullScreen message={error} />;
+  if (!isLoading && reels.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <Icon name="film-outline" size={64} color="#737373" />
+        <Text style={styles.emptyTitle}>No Reels Yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Be the first to create and share a reel with the community!
+        </Text>
+        <TouchableOpacity
+          style={styles.emptyCreateBtn}
+          onPress={() => navigation.navigate('Create')}
+        >
+          <Icon name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.emptyCreateBtnText}>Create a Reel</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -124,5 +149,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  emptyContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    color: '#A8A8A8',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 24,
+    gap: 8,
+  },
+  emptyCreateBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

@@ -29,7 +29,7 @@ export const StoryRing: React.FC<StoryRingProps> = ({
   const ringSize = size + ringPadding * 2 + innerSpacing * 2;
 
   const content = children || (
-    uri ? (
+    Boolean(uri && uri.trim().length > 0) ? (
       <Image
         source={{ uri }}
         style={{

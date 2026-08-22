@@ -10,7 +10,7 @@ import {
 } from '@utils/constants';
 
 // Bump this when video URLs change to auto-clear stale cached data
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const MMKV_CACHE_VERSION_KEY = 'reels_cache_version';
 import type {
   Reel,
@@ -42,68 +42,7 @@ const DEFAULT_PAGINATION: ReelsPaginationState = {
   lastFetchedAt: null,
 };
 
-const DEFAULT_REELS: Reel[] = [
-  {
-    id: 'reel-1',
-    videoUrl: 'http://localhost:5000/videos/VID_20260821_135436_638.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
-    caption: 'Official Instagram Reel Spotlight 🎬🔥 #trending #viral #lumigram',
-    author: {
-      id: 'u1',
-      username: 'alex.captures',
-      profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-      isVerified: true,
-      isFollowing: false,
-    },
-    likesCount: 184500,
-    commentsCount: 4920,
-    sharesCount: 3810,
-    isLiked: false,
-    duration: 45,
-    createdAt: new Date().toISOString(),
-    audioName: 'Original Instagram Audio • Trending Track',
-  },
-  {
-    id: 'reel-2',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400',
-    caption: '60s+ Cinematic Nature & Wildlife Experience 🌲🐰 #nature #4k #reels',
-    author: {
-      id: 'u2',
-      username: 'sarah.travels',
-      profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-      isVerified: false,
-      isFollowing: true,
-    },
-    likesCount: 142100,
-    commentsCount: 3820,
-    sharesCount: 2920,
-    isLiked: false,
-    duration: 60,
-    createdAt: new Date().toISOString(),
-    audioName: 'Original Audio - Cinematic Master',
-  },
-  {
-    id: 'reel-3',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400',
-    caption: 'Full Sci-Fi Animation Masterpiece 🎬✨ #scifi #animation #3d',
-    author: {
-      id: 'u3',
-      username: 'elena_vibe',
-      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-      isVerified: true,
-      isFollowing: false,
-    },
-    likesCount: 65400,
-    commentsCount: 3100,
-    sharesCount: 1400,
-    isLiked: true,
-    duration: 60,
-    createdAt: new Date().toISOString(),
-    audioName: 'Sci-Fi Orchestral Score',
-  },
-];
+const DEFAULT_REELS: Reel[] = [];
 
 const DEFAULT_UI: ReelUIState = {
   currentIndex: 0,

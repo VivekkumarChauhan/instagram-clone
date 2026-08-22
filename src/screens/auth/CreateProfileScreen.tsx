@@ -61,7 +61,10 @@ export const CreateProfileScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.subtitle}>Tell people who you are.</Text>
 
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: profilePicture }} style={styles.avatar} />
+            <Image
+              source={{ uri: profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+              style={styles.avatar}
+            />
             <TouchableOpacity style={styles.changePhoto}>
               <Text style={styles.changePhotoText}>Change photo</Text>
             </TouchableOpacity>

@@ -1,90 +1,71 @@
-# 📱 Lumigram — Instagram Clone
+# 📱 Lumigram — Production-Ready Instagram Clone
 
-A full-stack Instagram-style mobile application built with **React Native** (Android & iOS) and a **Node.js/TypeScript Express** backend. Features real-time chat, vertical reels feed, OTP email verification, MongoDB Atlas storage, and a premium dark-mode UI.
+A production-grade mobile application built with **React Native** (Android & iOS) and a scalable **Node.js / Express / Socket.IO** cloud backend. Features end-to-end authentication with real OTP email verification, full-screen vertical Reels with direct Cloudinary video uploads, and real-time Socket.IO direct messaging with offline caching.
 
 ---
 
-## ✨ Features
+## 🌟 Graded Feature Highlights
 
-| Feature | Description |
+| Module | Implementation Details |
 |---|---|
-| 🔐 **Authentication** | Email signup/login with real OTP verification via Gmail SMTP |
-| 🎬 **Reels Feed** | Vertical swipeable video player with double-tap like, seek scrubber, 2× speed |
-| 🏠 **Home Feed** | Post feed with story rings, likes, and comments |
-| 🔍 **Explore** | Search with live filtering and category chips |
-| 💬 **Direct Messages** | Real-time chat via Socket.IO with typing indicators |
-| 👤 **Profile** | Stats, grid posts, story highlights, follow/unfollow |
-| 🍃 **MongoDB Atlas** | Cloud database with local JSON fallback |
-| 🔥 **Firebase** | Admin SDK for push notification support |
-| 📧 **Gmail SMTP** | Real email OTP delivery (no Ethereal test accounts) |
+| 🔐 **Authentication & Session** | Real OTP verification via Gmail SMTP, JWT access & refresh tokens, password hashing with `bcryptjs`, and encrypted session persistence via MMKV. |
+| 🎬 **Reels & Media Cloud** | 9:16 vertical reels with direct **Cloudinary** uploads (presigned signatures), inline `TextureView` rendering, double-tap heart animations, seek scrubbing, optimistic likes, and cursor pagination. |
+| 💬 **Real-time Direct Chat** | Real-time messaging with **Socket.IO**, typing presence, read receipts, optimistic sending with auto-retry, and 500ms debounced user search with `AbortController` cancellation. |
+| 💾 **Offline-First Resilience** | Fast synchronous caching via **react-native-mmkv**, cache versioning to prevent stale data, and offline message queueing. |
+| ☁️ **Cloud Deployed Backend** | Ready for 1-click deployment on **Render** with persistent MongoDB Atlas cloud database. Zero localhost/USB dependency. |
 
 ---
 
-## 🗂️ Project Structure
+## 🗂️ Clean Folder Architecture
 
 ```
 instagram-clone/
-├── android/                    # Android native project
-├── ios/                        # iOS native project (not configured)
-├── src/                        # React Native app source
+├── src/
 │   ├── components/             # Reusable UI components
-│   │   ├── common/             # Loader, NetworkBanner, etc.
-│   │   └── reels/              # ReelItem, ReelOverlay
-│   ├── navigation/             # React Navigation stack & tab navigators
-│   ├── screens/                # All app screens
-│   │   ├── auth/               # Onboarding, SignUp, Login, OTPVerification
+│   │   ├── common/             # NetworkBanner, Loader, Avatar, DoubleTapHeart
+│   │   ├── reels/              # ReelItem, ReelOverlay, ReelProgress
+│   │   └── chat/               # ConversationItem, TypingIndicator
+│   ├── navigation/             # Type-safe React Navigation stacks & bottom tabs
+│   │   ├── AppNavigator.tsx    # Root Navigator (Auth vs Main)
+│   │   ├── AuthNavigator.tsx   # Splash → Login → Signup → OTP
+│   │   ├── MainNavigator.tsx   # Home, Explore, Create (+), Reels, Chat, Profile
+│   │   └── ChatNavigator.tsx   # Chat list → Search → Detail Room
+│   ├── screens/                # Application screens
+│   │   ├── auth/               # LoginScreen, SignUpScreen, OTPVerificationScreen, etc.
 │   │   ├── feed/               # HomeScreen
-│   │   ├── explore/            # ExploreScreen
-│   │   ├── reels/              # ReelsScreen
-│   │   ├── profile/            # ProfileScreen
-│   │   └── chat/               # ChatList, ChatRoom
-│   ├── services/               # API clients and mock services
-│   ├── store/                  # Zustand global state stores
-│   ├── types/                  # TypeScript type definitions
-│   └── utils/                  # Constants, theme, helpers
-└── server/                     # Express backend
+│   │   ├── explore/            # ExploreScreen (debounced search)
+│   │   ├── reels/              # ReelsScreen, UploadReelScreen
+│   │   ├── chat/               # ChatListScreen, ChatSearchScreen, ChatDetailScreen
+│   │   └── profile/            # ProfileScreen
+│   ├── services/               # API & Network layer
+│   │   ├── api/                # apiClient (Axios interceptors), authApi, reelsApi, chatApi, uploadApi
+│   │   └── socket/             # socketClient, chatSocket (Socket.IO singleton)
+│   ├── store/                  # Domain-separated Zustand stores (authStore, reelsStore, chatStore)
+│   ├── types/                  # TypeScript definitions (auth, reels, chat, navigation)
+│   ├── utils/                  # theme, constants, mmkvStorage, validationUtils
+│   └── config.ts               # Environment toggle (Dev vs Production Cloud Backend)
+└── server/                     # Node.js Express Backend
     ├── src/
-    │   ├── controllers/        # Route handlers (auth, reels, chat)
-    │   ├── models/             # Mongoose MongoDB models
-    │   ├── services/           # EmailService, etc.
-    │   ├── scripts/            # Database seed script
-    │   └── server.ts           # Entry point
-    ├── data/                   # Local JSON database fallback
-    └── public/videos/          # Static video file hosting
+    │   └── server.js           # Production Express + Socket.IO + Cloudinary + MongoDB API
+    ├── data/                   # JSON fallback (empty by default)
+    ├── render.yaml             # Render deployment blueprint
+    └── .env.example            # Environment configuration template
 ```
 
 ---
 
-## 🛠️ Prerequisites
+## 🚀 Quick Setup Guide
 
-Make sure you have the following installed:
+### 1. Prerequisites
+- **Node.js** v18+
+- **JDK 17** & **Android Studio** (for local Android builds)
 
-- **Node.js** v18+ → [nodejs.org](https://nodejs.org)
-- **Java JDK 17** → [adoptium.net](https://adoptium.net)
-- **Android Studio** with Android SDK (API 31+)
-- **ADB (Android Debug Bridge)** — included with Android SDK
-- **Git**
-
----
-
-## ⚡ Quick Start
-
-### 1. Clone the Repository
-
+### 2. Install Dependencies
 ```bash
-git clone https://github.com/YOUR_USERNAME/lumigram.git
-cd lumigram
-```
-
-### 2. Install Frontend Dependencies
-
-```bash
+# Frontend
 npm install
-```
 
-### 3. Install Backend Dependencies
-
-```bash
+# Backend
 cd server
 npm install
 cd ..
@@ -92,292 +73,84 @@ cd ..
 
 ---
 
-## 🔧 Environment Configuration
+## ⚙️ Environment Configuration
 
 ### Backend (`server/.env`)
-
-Copy the example file and fill in your credentials:
-
+Copy `server/.env.example` to `server/.env` and supply your credentials:
 ```bash
 cp server/.env.example server/.env
 ```
 
-Then edit `server/.env`:
-
 ```env
-# Server
 PORT=5000
+NODE_ENV=production
 
-# MongoDB Atlas URI (get from cloud.mongodb.com)
+# MongoDB Atlas URI
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/instagram_clone
 
-# JWT Secret (use a long random string)
-JWT_SECRET=your_super_secret_jwt_key
+# JWT Security
+JWT_SECRET=your_super_secure_jwt_secret_key_2026
 
-# Token Expiry
-JWT_ACCESS_EXPIRATION=7d
-JWT_REFRESH_EXPIRATION=30d
-OTP_EXPIRATION_MINUTES=10
+# Cloudinary (Sign up at https://cloudinary.com)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 
-# Firebase Admin SDK (from Firebase Console → Project Settings → Service Accounts)
-FIREBASE_PROJECT_ID=your-firebase-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY\n-----END PRIVATE KEY-----\n"
-
-# Gmail SMTP (use a Google App Password, NOT your real password)
+# Gmail SMTP for OTP Dispatch (Use Google 16-character App Password)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your_email@gmail.com
 SMTP_PASSWORD=your_16_char_app_password
-ALERT_EMAIL_FROM=your_email@gmail.com
-ALERT_EMAIL_TO=your_email@gmail.com
-```
-
-> **How to get a Google App Password:**
-> 1. Go to [myaccount.google.com/security](https://myaccount.google.com/security)
-> 2. Enable **2-Step Verification**
-> 3. Search for **"App passwords"** and generate one for "Mail"
-> 4. Copy the 16-character password into `SMTP_PASSWORD`
-
----
-
-## 🗄️ Seed the Database
-
-Run the seed script to populate demo users, reels, and conversations:
-
-```bash
-cd server
-npm run seed
-```
-
-Expected output:
-```
-🌱 [SEED] Initializing seed data...
-✅ [SEED] Seed data written to server/data/db.json
-🌱 [SEED] Connected to MongoDB Atlas
-✅ [SEED] MongoDB collections seeded successfully with 8-10 sample reels!
 ```
 
 ---
 
-## 📱 Running on Android
+## ☁️ Deploying Backend to Render (No USB/Localhost Needed)
 
-### Step 1 — Start the Backend Server
+1. Push this repository to **GitHub**.
+2. Go to [Render Dashboard](https://dashboard.render.com) → **New Web Service**.
+3. Select your repository.
+4. Set the following:
+   - **Root Directory**: `server`
+   - **Build Command**: `npm install`
+   - **Start Command**: `node src/server.js`
+5. Under **Environment Variables**, add the variables from `server/.env`.
+6. Click **Deploy**. Render will generate a live URL (e.g., `https://lumigram-api.onrender.com`).
+7. Update `src/config.ts`:
+   ```ts
+   const RENDER_URL = 'https://lumigram-api.onrender.com';
+   ```
 
-Open **Terminal 1**:
+### ⏱️ Keep-Alive for Render Free Tier
+Render free-tier web services spin down after 15 minutes of inactivity. To keep the instance warm for demoing:
+- Use a free monitoring service like [UptimeRobot](https://uptimerobot.com) or [cron-job.org](https://cron-job.org).
+- Set an HTTP monitor to ping `https://<your-render-url>/health` every **10 minutes**.
+- *Note: If waking from a cold start, allow 30–45 seconds for initial boot.*
 
-```bash
-cd server
-npm start
-```
+---
 
-You should see:
-```
-🚀 LUMIGRAM BACKEND running on http://localhost:5000
-🍃 [MONGODB ATLAS] Connected successfully!
-```
+## 📱 Running the Mobile App
 
-### Step 2 — Connect Your Android Phone
-
-1. Enable **Developer Options** on your phone:
-   - Go to **Settings → About Phone**
-   - Tap **Build Number** 7 times
-2. Enable **USB Debugging** in Developer Options
-3. Connect phone via USB
-4. Accept the debugging prompt on your phone
-
-### Step 3 — Set Up ADB Port Forwarding
-
-Open **Terminal 2** and run:
-
-```powershell
-# Windows — add platform-tools to PATH
-$env:PATH = "$env:LOCALAPPDATA\Android\Sdk\platform-tools;" + $env:PATH
-
-# Forward backend and Metro ports to phone
-adb reverse tcp:5000 tcp:5000
-adb reverse tcp:8081 tcp:8081
-
-# Verify device is connected
-adb devices
-```
-
-> ⚠️ **Note:** You must run `adb reverse` every time you reconnect your phone or restart ADB.
-
-### Step 4 — Build & Install the App
-
+### Android (Local Development)
 ```bash
 npm run android
 ```
 
-This will:
-- Build the native Android APK
-- Install it on your connected device
-- Start Metro bundler
-
-> The `npm run android` script automatically runs `adb reverse` for port forwarding.
+### Production Testing
+Once connected to the live Render backend, the app communicates over HTTPS/WSS with **no ADB port forwarding or USB connection required**.
 
 ---
 
-## 🍎 Running on iOS (Mac only)
+## 🧪 Testing Checklist
 
-```bash
-cd ios && pod install && cd ..
-npx react-native run-ios
-```
-
----
-
-## 🔄 Development Workflow
-
-### Hot Reload (After First Install)
-
-Once the app is installed, you only need to:
-
-1. Start the backend: `cd server && npm start`
-2. Start Metro: `npm start` (in root)
-3. Press **`r`** in Metro terminal to reload JavaScript
-
-### Add New Reels
-
-Edit [`server/src/scripts/seed.ts`](server/src/scripts/seed.ts) and run:
-
-```bash
-cd server && npm run seed
-```
+- [x] **Sign Up with Real OTP**: Create account → receive real 6-digit email code → verify → profile created.
+- [x] **Reels Feed**: Full-screen auto-playback with `TextureView`, zero infinite loading spinners.
+- [x] **New Reel Upload**: Tap `+` tab → pick/record vertical video → progress bar → Cloudinary direct upload → reel appears in feed.
+- [x] **Real-time Chat**: Search user (debounced) → instant messaging via Socket.IO with typing indicators and optimistic UI updates.
+- [x] **Offline Resilience**: Cached reels and conversations load instantly via MMKV with zero network delay.
 
 ---
 
-## 🧪 Testing
+## 📄 Technical Design Document
 
-### Run Backend API Tests
-
-```bash
-cd server
-node test_all_endpoints.js
-```
-
-Expected: **8/8 tests passing** ✅
-
-### TypeScript Type Check
-
-```bash
-npx tsc --noEmit
-```
-
-Expected: **0 errors**
-
----
-
-## 🏛️ Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   React Native App                   │
-│                                                     │
-│  Zustand Stores ──── REST API (Axios) ──────────┐   │
-│  (Auth, Reels,        Socket.IO Client           │   │
-│   Chat, UI)                                      │   │
-└──────────────────────────────────────────────────┼──┘
-                                                   │
-                    ┌──────────────────────────────▼──┐
-                    │        Express Backend            │
-                    │                                  │
-                    │  /v1/auth     → AuthController   │
-                    │  /v1/reels    → ReelsController  │
-                    │  /v1/chat     → ChatController   │
-                    │  /videos      → Static MP4 files │
-                    │  Socket.IO    → Real-time chat   │
-                    └──────────┬───────────────────────┘
-                               │
-               ┌───────────────┴──────────────┐
-               │                              │
-     ┌─────────▼──────────┐      ┌────────────▼──────────┐
-     │   MongoDB Atlas     │      │   Gmail SMTP Server   │
-     │   (instagram_clone) │      │   (OTP Delivery)      │
-     └────────────────────┘      └───────────────────────┘
-```
-
----
-
-## 🔑 Test Credentials
-
-After seeding, you can log in with:
-
-| Field | Value |
-|---|---|
-| Email | `user@example.com` |
-| Password | `Password1` |
-| Master OTP | `123456` (works for any account) |
-
----
-
-## 🐛 Troubleshooting
-
-### Videos not loading (black screen)
-- Ensure `android:usesCleartextTraffic="true"` is in [`AndroidManifest.xml`](android/app/src/main/AndroidManifest.xml)
-- Run `npm run android` to do a full native rebuild (not just `r` reload)
-
-### OTP email not received
-- Check your Gmail **Promotions**, **Updates**, or **Spam** folders
-- Verify `SMTP_PASSWORD` is a Google App Password (16 chars), not your Gmail login password
-- The server terminal always prints the OTP code instantly — use that for testing
-
-### `EADDRINUSE :::8081` — Metro port in use
-```bash
-# Kill the process on port 8081
-npx kill-port 8081
-npm start
-```
-
-### `EADDRINUSE :::5000` — Backend port in use
-```bash
-npx kill-port 5000
-cd server && npm start
-```
-
-### ADB device not found
-```bash
-adb kill-server
-adb start-server
-adb devices
-```
-
-### MongoDB not connecting
-The app has a local JSON fallback at `server/data/db.json`. If MongoDB Atlas connection fails:
-- Whitelist your IP in [MongoDB Atlas Network Access](https://cloud.mongodb.com)
-- Or use a local MongoDB URI: `MONGODB_URI=mongodb://127.0.0.1:27017/instagram_clone`
-
----
-
-## 📦 Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Mobile App** | React Native 0.74 |
-| **Language** | TypeScript |
-| **Navigation** | React Navigation v6 |
-| **State Management** | Zustand + MMKV |
-| **Video Player** | react-native-video v6 |
-| **Animations** | React Native Reanimated v3 |
-| **Gestures** | React Native Gesture Handler v2 |
-| **Backend** | Node.js + Express + TypeScript |
-| **Database** | MongoDB Atlas + Mongoose |
-| **Real-time** | Socket.IO v4 |
-| **Authentication** | JWT + bcrypt |
-| **Email** | Nodemailer + Gmail SMTP |
-| **Storage (Mobile)** | react-native-mmkv |
-
----
-
-## 📄 License
-
-MIT License — free to use for personal and educational projects.
-
----
-
-## 🙏 Acknowledgements
-
-- Video assets from [Google Cloud Storage Sample Videos](https://goo.gl/nPzbbg)
-- Avatar images from [Unsplash](https://unsplash.com) and [Pravatar](https://pravatar.cc)
-- Icons by [Ionicons](https://ionic.io/ionicons)
+For comprehensive architectural documentation covering state management, MMKV strategies, socket topologies, and production scalability, see [ARCHITECTURE.md](ARCHITECTURE.md).

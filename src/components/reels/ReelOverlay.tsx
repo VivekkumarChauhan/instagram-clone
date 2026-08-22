@@ -44,14 +44,16 @@ export const ReelOverlay: React.FC<Props> = ({
               activeOpacity={0.8}
             >
               <Image
-                source={{ uri: reel.author.profilePicture }}
+                source={{ uri: reel.author.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
                 style={styles.avatar}
               />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={onUserPress} activeOpacity={0.8}>
+            <TouchableOpacity onPress={onUserPress} activeOpacity={0.8} style={{ flexShrink: 1 }}>
               <View style={styles.usernameRow}>
-                <Text style={styles.username}>{reel.author.username}</Text>
+                <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">
+                  {reel.author.username}
+                </Text>
                 {reel.author.isVerified && (
                   <FontAwesome5
                     name="check-circle"
@@ -147,7 +149,7 @@ export const ReelOverlay: React.FC<Props> = ({
               style={styles.musicDisc}
             >
               <Image
-                source={{ uri: reel.author.profilePicture }}
+                source={{ uri: reel.author.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
                 style={styles.discThumb}
               />
             </LinearGradient>

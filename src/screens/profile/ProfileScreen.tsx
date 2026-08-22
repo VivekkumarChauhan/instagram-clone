@@ -40,20 +40,25 @@ const HIGHLIGHTS = [
   { id: 'h4', title: 'Trips 🏔️', image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=200' },
 ];
 
-export const ProfileScreen: React.FC<MainTabScreenProps<'Profile'>> = () => {
+import { useReelsStore } from '@store/reelsStore';
+
+export const ProfileScreen: React.FC<MainTabScreenProps<'Profile'>> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'grid' | 'reels' | 'tagged'>('grid');
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
+  const reels = useReelsStore(s => s.reels);
+
+  const myReels = reels.filter(r => r.author.id === user?.id || r.author.username === user?.username);
 
   const displayUser = {
-    username: user?.username || 'johndoe',
-    fullName: user?.fullName || 'John Doe',
+    username: user?.username || 'User',
+    fullName: user?.fullName || user?.username || 'Lumigram User',
     avatar: user?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    bio: user?.bio || 'Digital Creator 📸 • Lumigram Early Adopter ✨ • Living life in vibrant frames',
-    postsCount: user?.postsCount || 54,
-    followersCount: user?.followersCount || 12400,
-    followingCount: user?.followingCount || 382,
-    isVerified: user?.isVerified ?? true,
+    bio: user?.bio || 'Welcome to my Lumigram ✨',
+    postsCount: user?.postsCount ?? myReels.length,
+    followersCount: user?.followersCount ?? 0,
+    followingCount: user?.followingCount ?? 0,
+    isVerified: user?.isVerified ?? false,
   };
 
   return (
@@ -88,7 +93,10 @@ export const ProfileScreen: React.FC<MainTabScreenProps<'Profile'>> = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.avatarRing}
               >
-                <Image source={{ uri: displayUser.avatar }} style={styles.avatarImage} />
+                <Image
+                  source={{ uri: displayUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+                  style={styles.avatarImage}
+                />
               </LinearGradient>
               <View style={styles.onlineBadge}>
                 <FontAwesome5 name="bolt" size={10} color="#FFFFFF" />
@@ -185,11 +193,29 @@ export const ProfileScreen: React.FC<MainTabScreenProps<'Profile'>> = () => {
         </View>
 
         <View style={styles.gridContainer}>
-          {MOCK_GRID_PHOTOS.map((uri, index) => (
-            <TouchableOpacity key={index} style={styles.gridItem} activeOpacity={0.85}>
-              <Image source={{ uri }} style={styles.gridImage} />
-            </TouchableOpacity>
-          ))}
+          {myReels.length > 0 ? (
+            myReels.map((reel) => (
+              <TouchableOpacity
+                key={reel.id}
+                style={styles.gridItem}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Reels')}
+              >
+                <Image
+                  source={{ uri: reel.thumbnailUrl || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400' }}
+                  style={styles.gridImage}
+                />
+                <View style={styles.gridReelBadge}>
+                  <FontAwesome5 name="play" size={10} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyGridBox}>
+              <FontAwesome5 name="film" size={32} color={THEME.colors.textMuted} />
+              <Text style={styles.emptyGridText}>No reels or posts yet</Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity
@@ -424,6 +450,26 @@ const styles = StyleSheet.create({
   gridImage: {
     width: '100%',
     height: '100%',
+  },
+  gridReelBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  emptyGridBox: {
+    width: '100%',
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  emptyGridText: {
+    color: THEME.colors.textMuted,
+    fontSize: 14,
   },
   logoutWrapper: {
     marginHorizontal: 12,

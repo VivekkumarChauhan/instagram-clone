@@ -78,9 +78,13 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
     setIs2xSpeed(false);
   }, []);
 
+  const durationRef = useRef(0);
+  durationRef.current = duration;
+
   const handleLoad = useCallback((data: OnLoadData) => {
     setIsBuffering(false);
     setDuration(data.duration);
+    durationRef.current = data.duration;
   }, []);
 
   const handleProgress = useCallback((data: OnProgressData) => {
@@ -94,10 +98,11 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   }, []);
 
   const handleSeekPercentage = (pct: number) => {
+    const dur = durationRef.current;
     const clamped = Math.max(0, Math.min(1, pct));
     setProgress(clamped);
-    if (videoRef.current && duration > 0) {
-      const seekTime = clamped * duration;
+    if (videoRef.current && dur > 0) {
+      const seekTime = clamped * dur;
       videoRef.current.seek(seekTime);
     }
   };
@@ -110,14 +115,16 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
         setIsScrubbing(true);
         const touchX = evt.nativeEvent.pageX;
         const pct = Math.max(0, Math.min(1, touchX / SCREEN_WIDTH));
+        const dur = durationRef.current;
         setProgress(pct);
-        setScrubPreviewTime(pct * duration);
+        setScrubPreviewTime(pct * dur);
       },
       onPanResponderMove: (evt) => {
         const touchX = evt.nativeEvent.pageX;
         const pct = Math.max(0, Math.min(1, touchX / SCREEN_WIDTH));
+        const dur = durationRef.current;
         setProgress(pct);
-        setScrubPreviewTime(pct * duration);
+        setScrubPreviewTime(pct * dur);
       },
       onPanResponderRelease: (evt) => {
         const touchX = evt.nativeEvent.pageX;
@@ -189,7 +196,7 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   return (
     <View style={styles.container}>
       <Image
-        source={{ uri: reel.thumbnailUrl }}
+        source={{ uri: reel.thumbnailUrl || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400' }}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
@@ -201,13 +208,21 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
           style={videoStyle}
           resizeMode="cover"
           repeat
-          paused={isPaused}
+          paused={!isActive || isPaused}
           muted={isMuted}
           rate={is2xSpeed ? 2.0 : 1.0}
-          onLoad={handleLoad}
+          onLoad={(d) => {
+            handleLoad(d);
+            setIsBuffering(false);
+          }}
+          onReadyForDisplay={() => setIsBuffering(false)}
           onProgress={handleProgress}
           onBuffer={handleBuffer}
-          onError={(e) => { console.warn('[Video Error]', reel.videoUrl, e); setHasError(true); setIsBuffering(false); }}
+          onError={(e) => {
+            console.warn('[Video Error]', reel.videoUrl, e);
+            setHasError(true);
+            setIsBuffering(false);
+          }}
           ignoreSilentSwitch="ignore"
           playInBackground={false}
           playWhenInactive={false}
@@ -218,14 +233,21 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
       ) : (
         <View style={styles.videoPlaceholder}>
           {hasError && (
-            <View style={styles.errorInfo}>
-              <Text style={styles.errorText}>⚠️ Tap to skip</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.errorInfo}
+              onPress={() => {
+                setHasError(false);
+                setIsBuffering(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.errorText}>⚠️ Failed to load. Tap to retry</Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
 
-      {isBuffering && isActive && (
+      {isBuffering && isActive && !hasError && (
         <View style={styles.bufferingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
@@ -417,9 +439,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 20,
+    height: 36,
     justifyContent: 'flex-end',
-    zIndex: 25,
+    zIndex: 50,
   },
   progressBarTrack: {
     height: 4,

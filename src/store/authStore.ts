@@ -74,22 +74,16 @@ export const useAuthStore = create<AuthStore>()(
         set({ status: 'loading', isLoading: true, error: null });
         try {
           const res = await authApi.verifyOTP({ email, otp, purpose: purpose as any });
-          if (res.token) {
+          if (res.tokens) {
+            saveTokens(res.tokens.accessToken, res.tokens.refreshToken);
+          } else if (res.token) {
             saveTokens(res.token, res.token);
           }
-          const verifiedUser: User = res.user || {
-            id: 'user-001',
-            email: email,
-            username: email.split('@')[0],
-            fullName: email.split('@')[0],
-            profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-            bio: 'Welcome to my Lumigram profile ✨',
-            followersCount: 1240,
-            followingCount: 380,
-            postsCount: 12,
-            isVerified: true,
-          };
-          set({ user: verifiedUser, status: 'authenticated', isLoading: false, error: null });
+          if (res.user) {
+            set({ user: res.user, status: 'authenticated', isLoading: false, error: null });
+          } else {
+            set({ status: 'unauthenticated', isLoading: false, error: null });
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Verification failed';
           set({ status: 'unauthenticated', isLoading: false, error: message });

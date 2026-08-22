@@ -30,40 +30,6 @@ interface NoteItem {
   isUser?: boolean;
 }
 
-const MOCK_NOTES: NoteItem[] = [
-  {
-    id: 'my_note',
-    username: 'Your note',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    noteText: 'Share note...',
-    isUser: true,
-  },
-  {
-    id: 'note_1',
-    username: 'elena_vibe',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-    noteText: 'Coffee & code ☕',
-  },
-  {
-    id: 'note_2',
-    username: 'marcus.fit',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
-    noteText: 'Leg day done 💪',
-  },
-  {
-    id: 'note_3',
-    username: 'sarah.style',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-    noteText: 'Weekend mode ✨',
-  },
-  {
-    id: 'note_4',
-    username: 'urban_lens',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-    noteText: 'Shooting in Soho 📸',
-  },
-];
-
 export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const conversations = useChatStore(selectConversations);
   const isLoading = useChatStore(s => s.isLoadingConversations);
@@ -80,15 +46,16 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   }, [loadConversations, connectSocket, disconnectSocket]);
 
   const handleConversationPress = useCallback(
-    (conversation: Conversation) => {
-      const participant = conversation.participants[0];
+    (conversation: any) => {
+      const other = conversation.participantDetails?.find((p: any) => p.id !== sessionUser?.id) || conversation.participants?.[0];
+      const conversationId = conversation._id || conversation.id;
       navigation.navigate('ChatDetail', {
-        conversationId: conversation.id,
-        participantName: participant?.username ?? 'Chat',
-        participantAvatar: participant?.profilePicture ?? '',
+        conversationId,
+        participantName: other?.username ?? other?.fullName ?? 'Chat',
+        participantAvatar: other?.profilePicture ?? '',
       });
     },
-    [navigation],
+    [navigation, sessionUser?.id],
   );
 
   const renderHeader = () => (
@@ -103,15 +70,15 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.searchPlaceholder}>Search</Text>
       </TouchableOpacity>
 
-      {/* Notes Row */}
-      <View style={styles.notesSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.notesList}>
-          {MOCK_NOTES.map(item => (
-            <View key={item.id} style={styles.noteItem}>
+      {/* User Note Bubble */}
+      {sessionUser && (
+        <View style={styles.notesSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.notesList}>
+            <View style={styles.noteItem}>
               <View style={styles.noteBubbleContainer}>
                 <View style={styles.noteBubble}>
                   <Text style={styles.noteBubbleText} numberOfLines={1}>
-                    {item.noteText}
+                    Share a thought...
                   </Text>
                 </View>
                 <View style={styles.noteTriangle} />
@@ -119,23 +86,21 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
               <View style={styles.noteAvatarWrapper}>
                 <Image
-                  source={{ uri: item.isUser ? (sessionUser?.profilePicture ?? item.avatar) : item.avatar }}
+                  source={{ uri: sessionUser.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
                   style={styles.noteAvatar}
                 />
-                {item.isUser && (
-                  <View style={styles.addNoteBadge}>
-                    <Icon name="add" size={12} color="#FFFFFF" />
-                  </View>
-                )}
+                <View style={styles.addNoteBadge}>
+                  <Icon name="add" size={12} color="#FFFFFF" />
+                </View>
               </View>
 
               <Text style={styles.noteUsername} numberOfLines={1}>
-                {item.username}
+                Your note
               </Text>
             </View>
-          ))}
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Messages / Requests Tab Row */}
       <View style={styles.sectionHeaderRow}>
@@ -146,7 +111,7 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setActiveTab('requests')}>
           <Text style={[styles.requestsTab, activeTab === 'requests' && styles.activeRequestsTab]}>
-            Requests (5)
+            Requests
           </Text>
         </TouchableOpacity>
       </View>
@@ -175,7 +140,7 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               <Icon name="arrow-back" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
           )}
-          <Text style={styles.headerUsername}>{sessionUser?.username ?? 'alex_photo'}</Text>
+          <Text style={styles.headerUsername}>{sessionUser?.username ?? 'Direct'}</Text>
           <Icon name="chevron-down" size={14} color={COLORS.textPrimary} style={{ marginLeft: 4 }} />
         </View>
 

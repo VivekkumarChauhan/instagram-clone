@@ -27,12 +27,13 @@ import type { Message } from '@appTypes/chat';
 import type { ChatScreenProps } from '@appTypes/navigation';
 import { TYPING_INDICATOR_TIMEOUT_MS } from '@utils/constants';
 
-type Props = ChatScreenProps<'ChatDetail'>;
+import { useAuthStore } from '@store/authStore';
 
-const CURRENT_USER_ID = 'user-001';
+type Props = ChatScreenProps<'ChatDetail'>;
 
 export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { conversationId, participantName, participantAvatar } = route.params;
+  const currentUserId = useAuthStore(s => s.user?.id);
 
   const messages = useChatStore(selectMessagesForConversation(conversationId));
   const isTyping = useChatStore(selectTypingForConversation(conversationId));
@@ -86,7 +87,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const renderMessageBubble = ({ item }: { item: Message }) => {
-    const isOwn = item.sender.id === CURRENT_USER_ID;
+    const isOwn = item.sender.id === currentUserId || item.sender.id === 'me';
 
     return (
       <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>

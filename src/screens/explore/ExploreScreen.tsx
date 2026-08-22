@@ -27,47 +27,37 @@ interface ExploreItem {
   tag: string;
 }
 
-const CATEGORIES = ['All', 'Trending', 'Art', 'Travel', 'Music', 'Gaming', 'Fashion'];
+import { useReelsStore } from '@store/reelsStore';
 
-const MOCK_EXPLORE_ITEMS: ExploreItem[] = [
-  { id: 'e1', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=500', isReel: true, views: '1.2M', tag: 'Trending' },
-  { id: 'e2', imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500', isReel: false, tag: 'Travel' },
-  { id: 'e3', imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=500', isReel: false, tag: 'Travel' },
-  { id: 'e4', imageUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=500', isReel: false, tag: 'Art' },
-  { id: 'e5', imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', isReel: true, views: '840K', tag: 'Trending' },
-  { id: 'e6', imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=500', isReel: false, tag: 'Art' },
-  { id: 'e7', imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=500', isReel: false, tag: 'Travel' },
-  { id: 'e8', imageUrl: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=500', isReel: true, views: '2.5M', tag: 'Fashion' },
-  { id: 'e9', imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500', isReel: false, tag: 'Music' },
-  { id: 'e10', imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500', isReel: false, tag: 'Gaming' },
-  { id: 'e11', imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=500', isReel: true, views: '450K', tag: 'Trending' },
-  { id: 'e12', imageUrl: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=500', isReel: false, tag: 'Art' },
-];
+const CATEGORIES = ['All', 'Reels', 'Trending', 'Creators'];
 
 export const ExploreScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const reels = useReelsStore(s => s.reels);
 
-  const filteredItems = MOCK_EXPLORE_ITEMS.filter(item => {
-    if (selectedCategory !== 'All' && item.tag !== selectedCategory) return false;
-    if (searchQuery.trim() && !item.tag.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
+  const filteredReels = reels.filter(item => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return item.caption.toLowerCase().includes(q) || item.author.username.toLowerCase().includes(q);
   });
 
-  const renderItem = ({ item }: { item: ExploreItem }) => {
+  const renderItem = ({ item }: { item: any }) => {
     return (
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={() => navigation.navigate('Reels')}
         style={styles.cell}
       >
-        <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
-        {item.isReel && (
-          <View style={styles.reelBadge}>
-            <FontAwesome5 name="play" size={10} color="#FFFFFF" style={{ marginRight: 4 }} />
-            {item.views && <Text style={styles.viewsText}>{item.views}</Text>}
-          </View>
-        )}
+        <Image
+          source={{ uri: item.thumbnailUrl || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400' }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        <View style={styles.reelBadge}>
+          <FontAwesome5 name="play" size={10} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.viewsText}>{item.likesCount}</Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -126,12 +116,19 @@ export const ExploreScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       </View>
 
       <FlatList
-        data={filteredItems}
+        data={filteredReels}
         numColumns={3}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridContent}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyExplore}>
+            <Ionicons name="compass-outline" size={54} color={THEME.colors.textMuted} />
+            <Text style={styles.emptyExploreTitle}>Discover Creators</Text>
+            <Text style={styles.emptyExploreSubtitle}>Trending reels will appear here once uploaded</Text>
+          </View>
+        )}
       />
     </SafeAreaView>
   );
@@ -226,5 +223,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+  },
+  emptyExplore: {
+    paddingVertical: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyExploreTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  emptyExploreSubtitle: {
+    color: THEME.colors.textSecondary,
+    fontSize: 14,
   },
 });

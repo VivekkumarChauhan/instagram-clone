@@ -43,134 +43,50 @@ interface FeedPost {
   isSaved?: boolean;
 }
 
-const MOCK_STORIES: StoryUser[] = [
-  { id: 's0', username: 'Your story', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200', hasUnseen: false },
-  { id: 's1', username: 'alex_photo', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200', hasUnseen: true },
-  { id: 's2', username: 'elena_vibe', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200', hasUnseen: true },
-  { id: 's3', username: 'tokyo.lens', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200', hasUnseen: true },
-  { id: 's4', username: 'sarah.raw', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200', hasUnseen: false },
-  { id: 's5', username: 'neon.space', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200', hasUnseen: true },
-];
-
-const MOCK_FEED: FeedPost[] = [
-  {
-    id: 'p1',
-    username: 'alex_photo',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    isVerified: true,
-    location: 'Shinjuku, Tokyo',
-    mediaUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800',
-    likesCount: 14280,
-    caption: 'Neon reflections after the rain in Shinjuku 🌧️✨ Shot on 35mm.',
-    commentsCount: 342,
-    timeAgo: '2h ago',
-    isLiked: false,
-    isSaved: false,
-  },
-  {
-    id: 'p2',
-    username: 'elena_vibe',
-    userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-    isVerified: false,
-    location: 'Amalfi Coast, Italy',
-    mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-    likesCount: 28940,
-    caption: 'Endless blue horizon and morning espresso ☕🌊 #summer #italy',
-    commentsCount: 512,
-    timeAgo: '5h ago',
-    isLiked: true,
-    isSaved: true,
-  },
-  {
-    id: 'p3',
-    username: 'tokyo.lens',
-    userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
-    isVerified: true,
-    location: 'Kyoto, Japan',
-    mediaUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800',
-    likesCount: 39510,
-    caption: 'Quiet pathways before the city wakes up ⛩️🍂',
-    commentsCount: 780,
-    timeAgo: '9h ago',
-    isLiked: false,
-    isSaved: false,
-  },
-];
+import { useAuthStore } from '@store/authStore';
+import { useReelsStore } from '@store/reelsStore';
 
 export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation }) => {
-  const [feed, setFeed] = useState<FeedPost[]>(MOCK_FEED);
-
-  const toggleLike = (postId: string) => {
-    setFeed(prev =>
-      prev.map(post => {
-        if (post.id === postId) {
-          const isLiked = !post.isLiked;
-          return {
-            ...post,
-            isLiked,
-            likesCount: post.likesCount + (isLiked ? 1 : -1),
-          };
-        }
-        return post;
-      }),
-    );
-  };
-
-  const toggleSave = (postId: string) => {
-    setFeed(prev =>
-      prev.map(post => {
-        if (post.id === postId) {
-          return { ...post, isSaved: !post.isSaved };
-        }
-        return post;
-      }),
-    );
-  };
+  const user = useAuthStore(s => s.user);
+  const reels = useReelsStore(s => s.reels);
+  const toggleLike = useReelsStore(s => s.toggleLike);
 
   const renderStoriesTray = () => (
     <View style={styles.storiesContainer}>
-      <FlatList
-        data={MOCK_STORIES}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.storiesList}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity style={styles.storyItem} activeOpacity={0.8}>
-            <View style={styles.storyRingWrapper}>
-              <StoryRing
-                uri={item.avatar}
-                size={66}
-                hasUnseen={item.hasUnseen}
-              />
-              {index === 0 && (
-                <View style={styles.addStoryBadge}>
-                  <Ionicons name="add" size={14} color="#FFFFFF" />
-                </View>
-              )}
-            </View>
-            <Text style={styles.storyUsername} numberOfLines={1}>
-              {item.username}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      <TouchableOpacity style={styles.storyItem} activeOpacity={0.8}>
+        <View style={styles.storyRingWrapper}>
+          <StoryRing
+            uri={user?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+            size={66}
+            hasUnseen={false}
+          />
+          <View style={styles.addStoryBadge}>
+            <Ionicons name="add" size={14} color="#FFFFFF" />
+          </View>
+        </View>
+        <Text style={styles.storyUsername} numberOfLines={1}>
+          Your story
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
-  const renderPost = ({ item }: { item: FeedPost }) => (
+  const renderPost = ({ item }: { item: any }) => (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <View style={styles.postAuthorRow}>
-          <Image source={{ uri: item.userAvatar }} style={styles.postAvatar} />
+          <Image
+            source={{ uri: item.author.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+            style={styles.postAvatar}
+          />
           <View style={styles.postAuthorMeta}>
             <View style={styles.usernameRow}>
-              <Text style={styles.postUsername}>{item.username}</Text>
-              {item.isVerified && (
+              <Text style={styles.postUsername}>{item.author.username}</Text>
+              {item.author.isVerified && (
                 <FontAwesome5 name="check-circle" size={12} color={THEME.colors.accent} solid style={{ marginLeft: 4 }} />
               )}
             </View>
-            {item.location ? <Text style={styles.postLocation}>{item.location}</Text> : null}
+            <Text style={styles.postLocation}>Reel</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.postMenuBtn}>
@@ -179,7 +95,16 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
       </View>
 
       <DoubleTapHeart onDoubleTap={() => toggleLike(item.id)}>
-        <Image source={{ uri: item.mediaUrl }} style={styles.postMedia} resizeMode="cover" />
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Reels')}>
+          <Image
+            source={{ uri: item.thumbnailUrl || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400' }}
+            style={styles.postMedia}
+            resizeMode="cover"
+          />
+          <View style={styles.playOverlayBadge}>
+            <FontAwesome5 name="play" size={24} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
       </DoubleTapHeart>
 
       <View style={styles.postActionsBar}>
@@ -192,35 +117,24 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
               solid={item.isLiked}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Reels')}>
             <FontAwesome5 name="comment" size={20} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('ChatTab')}>
             <FontAwesome5 name="paper-plane" size={20} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => toggleSave(item.id)}>
-          <FontAwesome5
-            name="bookmark"
-            size={20}
-            color={item.isSaved ? THEME.colors.accent : THEME.colors.textPrimary}
-            solid={item.isSaved}
-          />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.postMeta}>
         <Text style={styles.likesCount}>{item.likesCount.toLocaleString()} likes</Text>
         <View style={styles.captionRow}>
           <Text style={styles.captionText}>
-            <Text style={styles.captionAuthor}>{item.username} </Text>
+            <Text style={styles.captionAuthor}>{item.author.username} </Text>
             {item.caption}
           </Text>
         </View>
-        <TouchableOpacity style={styles.commentsLink}>
-          <Text style={styles.commentsCountText}>View all {item.commentsCount} comments</Text>
-        </TouchableOpacity>
-        <Text style={styles.timeAgoText}>{item.timeAgo}</Text>
+        <Text style={styles.timeAgoText}>{item.audioName || 'Original Audio'}</Text>
       </View>
     </View>
   );
@@ -243,29 +157,41 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
         </View>
 
         <View style={styles.topRightActions}>
-          <TouchableOpacity style={styles.topIconBtn}>
+          <TouchableOpacity style={styles.topIconBtn} onPress={() => navigation.navigate('Create')}>
             <FontAwesome5 name="plus-square" size={20} color={THEME.colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topIconBtn}>
-            <FontAwesome5 name="heart" size={20} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.topIconBtn}
             onPress={() => navigation.navigate('ChatTab')}
           >
             <FontAwesome5 name="paper-plane" size={20} color={THEME.colors.textPrimary} />
-            <View style={styles.unreadPulseDot} />
           </TouchableOpacity>
         </View>
       </View>
 
       <FlatList
-        data={feed}
+        data={reels}
         renderItem={renderPost}
         keyExtractor={item => item.id}
         ListHeaderComponent={renderStoriesTray}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.feedContent}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyFeedBox}>
+            <Ionicons name="sparkles-outline" size={48} color={THEME.colors.accent} />
+            <Text style={styles.emptyFeedTitle}>Welcome to Lumigram</Text>
+            <Text style={styles.emptyFeedSubtitle}>
+              Be the first to share a vertical reel with your community!
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyFeedBtn}
+              onPress={() => navigation.navigate('Create')}
+            >
+              <FontAwesome5 name="plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.emptyFeedBtnText}>Create Reel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       />
     </SafeAreaView>
   );
@@ -464,5 +390,48 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  playOverlayBadge: {
+    position: 'absolute',
+    top: '40%',
+    left: '45%',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyFeedBox: {
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyFeedTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  emptyFeedSubtitle: {
+    color: THEME.colors.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyFeedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  emptyFeedBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

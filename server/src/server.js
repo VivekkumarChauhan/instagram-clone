@@ -90,7 +90,7 @@ const ConversationSchema = new mongoose.Schema({
 });
 
 const MessageSchema = new mongoose.Schema({
-  conversationId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+  conversationId: { type: String, required: true, index: true },
   senderId: { type: String, required: true },
   senderDetails: { type: Object },
   content: { type: String, required: true },
@@ -734,18 +734,26 @@ app.post('/v1/users/:id/follow', requireAuth, async (req, res) => {
 // CHAT ENDPOINTS
 // -------------------------------------------------------------
 
+// Helper to normalize conversation objects with string id
+function formatConversation(c) {
+  if (!c) return null;
+  const obj = c.toObject ? c.toObject() : { ...c };
+  obj.id = (obj._id || obj.id).toString();
+  return obj;
+}
+
 // GET /v1/chat/conversations
 app.get('/v1/chat/conversations', requireAuth, async (req, res) => {
   const userId = req.user.id;
   try {
     if (isMongoConnected) {
       const convos = await Conversation.find({ 'participantDetails.id': userId }).sort({ updatedAt: -1 }).limit(50);
-      return res.json({ conversations: convos, nextCursor: null, hasMore: false });
+      return res.json({ conversations: convos.map(formatConversation), nextCursor: null, hasMore: false });
     } else {
       const userConvos = db.conversations.filter(c =>
         c.participantDetails?.some(p => p.id === userId)
       );
-      return res.json({ conversations: userConvos, nextCursor: null, hasMore: false });
+      return res.json({ conversations: userConvos.map(formatConversation), nextCursor: null, hasMore: false });
     }
   } catch (err) {
     console.error('[GET CONVERSATIONS ERROR]', err);
@@ -779,7 +787,7 @@ app.post('/v1/chat/conversations', requireAuth, async (req, res) => {
           unreadCount: {},
         });
       }
-      return res.json({ conversation: convo });
+      return res.json({ conversation: formatConversation(convo) });
     } else {
       let convo = db.conversations.find(c =>
         c.participantDetails?.some(p => p.id === myId) &&
@@ -801,7 +809,7 @@ app.post('/v1/chat/conversations', requireAuth, async (req, res) => {
         db.conversations.push(convo);
         saveDb();
       }
-      return res.json({ conversation: convo });
+      return res.json({ conversation: formatConversation(convo) });
     }
   } catch (err) {
     console.error('[CREATE CONVERSATION ERROR]', err);
@@ -817,13 +825,24 @@ app.get('/v1/chat/conversations/:id/messages', requireAuth, async (req, res) => 
 
   try {
     if (isMongoConnected) {
-      const query = { conversationId: new mongoose.Types.ObjectId(conversationId) };
-      if (cursor) query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+      const query = { conversationId: conversationId.toString() };
+      if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+        query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+      }
       const messages = await Message.find(query).sort({ createdAt: -1 }).limit(limit + 1);
       const hasMore = messages.length > limit;
       const page = hasMore ? messages.slice(0, limit) : messages;
       const nextCursor = hasMore ? page[page.length - 1]._id.toString() : null;
-      return res.json({ messages: page.reverse(), nextCursor, hasMore });
+      const formatted = page.map(m => ({
+        id: (m._id || m.id).toString(),
+        conversationId: m.conversationId,
+        sender: m.senderDetails || { id: m.senderId },
+        content: m.content,
+        status: m.status || 'sent',
+        localId: m.localId,
+        createdAt: m.createdAt,
+      }));
+      return res.json({ messages: formatted.reverse(), nextCursor, hasMore });
     } else {
       const messageList = db.messages.get(conversationId) || [];
       return res.json({ messages: messageList, nextCursor: null, hasMore: false });
@@ -851,16 +870,29 @@ app.post('/v1/chat/conversations/:id/messages', requireAuth, async (req, res) =>
 
     if (isMongoConnected) {
       const msg = await Message.create({
-        conversationId: new mongoose.Types.ObjectId(conversationId),
-        senderId: userId, senderDetails, content: content.trim(),
-        status: 'sent', localId,
+        conversationId: conversationId.toString(),
+        senderId: userId,
+        senderDetails,
+        content: content.trim(),
+        status: 'sent',
+        localId,
       });
-      await Conversation.findByIdAndUpdate(conversationId, {
-        lastMessage: { id: msg._id.toString(), content: msg.content, senderId: userId, createdAt: msg.createdAt },
-        updatedAt: new Date(),
-      });
-      const formatted = { id: msg._id.toString(), conversationId, sender: senderDetails, content: msg.content, status: 'sent', localId, createdAt: msg.createdAt };
-      io.to(conversationId).emit('message:received', formatted);
+      if (mongoose.Types.ObjectId.isValid(conversationId)) {
+        await Conversation.findByIdAndUpdate(conversationId, {
+          lastMessage: { id: msg._id.toString(), content: msg.content, senderId: userId, createdAt: msg.createdAt },
+          updatedAt: new Date(),
+        });
+      }
+      const formatted = {
+        id: msg._id.toString(),
+        conversationId: conversationId.toString(),
+        sender: senderDetails,
+        content: msg.content,
+        status: 'sent',
+        localId,
+        createdAt: msg.createdAt,
+      };
+      io.to(conversationId.toString()).emit('message:received', formatted);
       return res.json(formatted);
     } else {
       const newMsg = { id: `msg-${Date.now()}`, localId, conversationId, sender: senderDetails, content: content.trim(), status: 'sent', createdAt: new Date().toISOString() };
@@ -869,7 +901,7 @@ app.post('/v1/chat/conversations/:id/messages', requireAuth, async (req, res) =>
       db.messages.set(conversationId, list);
       const conv = db.conversations.find(c => (c._id || c.id) === conversationId);
       if (conv) { conv.lastMessage = newMsg; conv.updatedAt = newMsg.createdAt; saveDb(); }
-      io.to(conversationId).emit('message:received', newMsg);
+      io.to(conversationId.toString()).emit('message:received', newMsg);
       return res.json(newMsg);
     }
   } catch (err) {

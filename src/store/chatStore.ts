@@ -166,6 +166,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     });
 
     chatSocket.onTyping((event) => {
+      const currentUser = useAuthStore.getState().user;
+      const currentUserId = currentUser?.id || (currentUser as any)?._id;
+      if (event.userId && currentUserId && String(event.userId) === String(currentUserId)) {
+        return;
+      }
       set(state => ({
         typingByConversation: {
           ...state.typingByConversation,

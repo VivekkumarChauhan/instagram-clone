@@ -49,9 +49,11 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    chatSocket.joinConversation(conversationId);
     loadMessages(conversationId);
     setActiveConversation(conversationId);
     return () => {
+      chatSocket.leaveConversation(conversationId);
       setActiveConversation(null);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
@@ -89,10 +91,15 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const renderMessageBubble = ({ item }: { item: Message }) => {
     const senderId = item.sender?.id || (item.sender as any)?._id;
     const senderUsername = item.sender?.username;
+    const myIdStr = currentUserId ? String(currentUserId).toLowerCase() : '';
+    const senderIdStr = senderId ? String(senderId).toLowerCase() : '';
+    const myUserStr = currentUsername ? String(currentUsername).toLowerCase() : '';
+    const senderUserStr = senderUsername ? String(senderUsername).toLowerCase() : '';
+
     const isOwn =
-      senderId === 'me' ||
-      (!!currentUserId && String(senderId) === String(currentUserId)) ||
-      (!!currentUsername && senderUsername === currentUsername);
+      senderIdStr === 'me' ||
+      (!!myIdStr && senderIdStr === myIdStr) ||
+      (!!myUserStr && senderUserStr === myUserStr);
 
     return (
       <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>

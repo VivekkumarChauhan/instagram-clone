@@ -45,17 +45,27 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     return () => disconnectSocket();
   }, [loadConversations, connectSocket, disconnectSocket]);
 
+  const sessionUserId = sessionUser?.id || (sessionUser as any)?._id;
+  const sessionUsername = sessionUser?.username;
+
   const handleConversationPress = useCallback(
     (conversation: any) => {
-      const other = conversation.participantDetails?.find((p: any) => p.id !== sessionUser?.id) || conversation.participants?.[0];
-      const conversationId = conversation._id || conversation.id;
+      const other =
+        conversation.participantDetails?.find((p: any) => {
+          const pId = p.id || p._id;
+          return (
+            (sessionUserId && pId !== sessionUserId) ||
+            (sessionUsername && p.username !== sessionUsername)
+          );
+        }) || conversation.participants?.[0];
+      const conversationId = conversation.id || conversation._id;
       navigation.navigate('ChatDetail', {
         conversationId,
         participantName: other?.username ?? other?.fullName ?? 'Chat',
         participantAvatar: other?.profilePicture ?? '',
       });
     },
-    [navigation, sessionUser?.id],
+    [navigation, sessionUserId, sessionUsername],
   );
 
   const renderHeader = () => (
@@ -177,7 +187,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   topHeader: {
-    height: 48,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 4 : 4,
+    height: Platform.OS === 'android' ? 52 + (StatusBar.currentHeight || 28) : 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { HomeScreen } from '@screens/feed/HomeScreen';
 import { ExploreScreen } from '@screens/explore/ExploreScreen';
@@ -100,13 +101,27 @@ export const MainNavigator: React.FC = () => {
       <Tab.Screen
         name="ChatTab"
         component={ChatNavigator}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <View style={styles.dmIconWrapper}>
-              <Icon name="paper-plane-outline" size={24} color={color} />
-              <View style={styles.dmRedDot} />
-            </View>
-          ),
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
+          const hideTabs = ['ChatDetail', 'ChatSearch'].includes(routeName);
+          return {
+            tabBarStyle: hideTabs
+              ? { display: 'none' }
+              : {
+                  backgroundColor: '#000000',
+                  borderTopColor: '#262626',
+                  borderTopWidth: 0.5,
+                  height: 48,
+                  paddingTop: 6,
+                  paddingBottom: 6,
+                },
+            tabBarIcon: ({ color }) => (
+              <View style={styles.dmIconWrapper}>
+                <Icon name="paper-plane-outline" size={24} color={color} />
+                <View style={styles.dmRedDot} />
+              </View>
+            ),
+          };
         }}
       />
 

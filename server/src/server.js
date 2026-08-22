@@ -288,8 +288,10 @@ function requireAuth(req, res, next) {
 }
 
 function sanitizeUser(user) {
+  if (!user) return null;
   const obj = user.toObject ? user.toObject() : { ...user };
   delete obj.password;
+  obj.id = (obj._id || obj.id)?.toString();
   return obj;
 }
 

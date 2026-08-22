@@ -10,7 +10,6 @@ import {
   Platform,
   SafeAreaView,
   StatusBar,
-  ActivityIndicator,
   Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -26,14 +25,15 @@ import { COLORS } from '@utils/constants';
 import type { Message } from '@appTypes/chat';
 import type { ChatScreenProps } from '@appTypes/navigation';
 import { TYPING_INDICATOR_TIMEOUT_MS } from '@utils/constants';
-
 import { useAuthStore } from '@store/authStore';
 
 type Props = ChatScreenProps<'ChatDetail'>;
 
 export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { conversationId, participantName, participantAvatar } = route.params;
-  const currentUserId = useAuthStore(s => s.user?.id);
+  const currentUser = useAuthStore(s => s.user);
+  const currentUserId = currentUser?.id || (currentUser as any)?._id;
+  const currentUsername = currentUser?.username;
 
   const messages = useChatStore(selectMessagesForConversation(conversationId));
   const isTyping = useChatStore(selectTypingForConversation(conversationId));
@@ -87,7 +87,12 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const renderMessageBubble = ({ item }: { item: Message }) => {
-    const isOwn = item.sender.id === currentUserId || item.sender.id === 'me';
+    const senderId = item.sender?.id || (item.sender as any)?._id;
+    const senderUsername = item.sender?.username;
+    const isOwn =
+      senderId === 'me' ||
+      (!!currentUserId && String(senderId) === String(currentUserId)) ||
+      (!!currentUsername && senderUsername === currentUsername);
 
     return (
       <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
@@ -115,10 +120,10 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Instagram-style Chat Header */}
+      {/* Instagram-style Chat Header with proper Android Top Inset */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Image
@@ -127,7 +132,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           />
           <View style={styles.headerTextGroup}>
             <View style={styles.nameRow}>
-              <Text style={styles.headerUsername}>{participantName}</Text>
+              <Text style={styles.headerUsername} numberOfLines={1}>{participantName}</Text>
               <Icon name="checkmark-circle" size={13} color={COLORS.primary} style={{ marginLeft: 3 }} />
             </View>
             <Text style={styles.statusSubtitle}>Active now</Text>
@@ -154,7 +159,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessageBubble}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => item.id || `msg-${index}`}
           onEndReached={() => {
             if (hasMore && !isLoadingMore) loadMoreMessages(conversationId);
           }}
@@ -164,7 +169,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
         />
 
-        {/* Instagram-matched Input Bar */}
+        {/* Instagram-matched Bottom Bar */}
         <View style={styles.bottomBar}>
           <TouchableOpacity style={styles.cameraIconBtn}>
             <Icon name="camera" size={20} color="#FFFFFF" />
@@ -213,7 +218,8 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   header: {
-    height: 52,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 6 : 8,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -228,13 +234,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backBtn: {
-    padding: 4,
+    padding: 6,
     marginRight: 6,
   },
   headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     marginRight: 10,
   },
   headerTextGroup: {
@@ -246,26 +252,28 @@ const styles = StyleSheet.create({
   },
   headerUsername: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
+    maxWidth: 160,
   },
   statusSubtitle: {
     color: '#8E8E93',
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    paddingRight: 4,
   },
   headerIconBtn: {
     padding: 4,
   },
   messageListContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 16,
-    gap: 10,
+    gap: 6,
   },
   bubbleRow: {
     flexDirection: 'row',
@@ -279,9 +287,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   senderAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     marginRight: 8,
     marginBottom: 2,
   },
@@ -289,19 +297,25 @@ const styles = StyleSheet.create({
     maxWidth: '75%',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 18,
   },
   bubbleOwn: {
-    backgroundColor: '#833AB4',
+    backgroundColor: '#3797EF',
     borderBottomRightRadius: 4,
+    borderTopRightRadius: 18,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
   },
   bubbleOther: {
     backgroundColor: '#262626',
     borderBottomLeftRadius: 4,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
   },
   bubbleText: {
-    fontSize: 14,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 20,
   },
   bubbleTextOwn: {
     color: '#FFFFFF',
@@ -320,9 +334,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cameraIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#0095F6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -334,21 +348,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1E1E',
     borderRadius: 22,
     paddingHorizontal: 14,
-    minHeight: 40,
+    minHeight: 42,
     borderWidth: 1,
     borderColor: '#2C2C2E',
   },
   textInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     paddingVertical: 8,
     maxHeight: 90,
   },
   inputIconsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     marginLeft: 6,
   },
   innerIconBtn: {
@@ -359,7 +373,7 @@ const styles = StyleSheet.create({
   },
   sendText: {
     color: '#0095F6',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
 });

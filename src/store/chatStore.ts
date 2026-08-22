@@ -97,8 +97,16 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       set({ conversations: [] });
       return;
     }
+    const currentUser = useAuthStore.getState().user;
+    const userId = currentUser?.id || (currentUser as any)?._id || 'anon';
+    const cachedSearches = getItem<UserSearchResult[]>(`${MMKV_RECENT_SEARCHES_KEY}_${userId}`) || [];
+
     const cached = getItem<Conversation[]>(MMKV_CONVERSATIONS_KEY);
-    if (cached) set({ conversations: cached });
+    if (cached) {
+      set({ conversations: cached, recentSearches: cachedSearches });
+    } else {
+      set({ recentSearches: cachedSearches });
+    }
   },
 
   connectSocket: () => {
@@ -346,9 +354,13 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   clearSearch: () => set({ searchQuery: '', searchResults: [], searchError: null, isSearching: false }),
 
   addRecentSearch: (user) => {
+    const currentUser = useAuthStore.getState().user;
+    const userId = currentUser?.id || (currentUser as any)?._id || 'anon';
     set(state => {
       const filtered = state.recentSearches.filter(u => u.id !== user.id);
-      return { recentSearches: [user, ...filtered].slice(0, 10) };
+      const updated = [user, ...filtered].slice(0, 10);
+      setItem(`${MMKV_RECENT_SEARCHES_KEY}_${userId}`, updated);
+      return { recentSearches: updated };
     });
   },
 

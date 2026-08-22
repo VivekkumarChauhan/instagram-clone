@@ -25,5 +25,6 @@ test_*.js
 Thumbs.db
 .idea/
 .vscode/
-dist/
+dist/*
+!dist/server.js
 build/

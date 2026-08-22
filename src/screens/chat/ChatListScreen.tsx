@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ConversationItem } from '@components/chat/ConversationItem';

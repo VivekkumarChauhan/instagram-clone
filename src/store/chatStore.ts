@@ -8,6 +8,7 @@ import {
   MMKV_CONVERSATIONS_KEY,
   MMKV_MESSAGES_PREFIX,
   MAX_CACHED_MESSAGES_PER_CONVERSATION,
+  MMKV_RECENT_SEARCHES_KEY,
 } from '@utils/constants';
 import type {
   Conversation,

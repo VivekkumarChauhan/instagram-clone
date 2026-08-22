@@ -115,21 +115,44 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     socketClient.connect();
 
     chatSocket.onNewMessage((message) => {
+      const currentUser = useAuthStore.getState().user;
+      const currentUserId = currentUser?.id || (currentUser as any)?._id;
+      const currentUsername = currentUser?.username;
+
       set(state => {
         const convId = message.conversationId;
         const existing = state.messagesByConversation[convId] ?? [];
-        const isDuplicate = existing.some(m => m.id === message.id);
-        if (isDuplicate) return state;
+        const isDuplicate = existing.some(
+          m => m.id === message.id || (message.localId && m.id === message.localId)
+        );
+
+        if (isDuplicate) {
+          return {
+            messagesByConversation: {
+              ...state.messagesByConversation,
+              [convId]: existing.map(m =>
+                (message.localId && m.id === message.localId) || m.id === message.id
+                  ? { ...message, isOptimistic: false }
+                  : m
+              ),
+            },
+          };
+        }
 
         const updatedMessages = [...existing, message];
         const persistSlice = updatedMessages.slice(-MAX_CACHED_MESSAGES_PER_CONVERSATION);
         setItem(`${MMKV_MESSAGES_PREFIX}${convId}`, persistSlice);
 
         const updatedConversations = state.conversations.map(c =>
-          c.id === convId ? { ...c, lastMessage: message } : c,
+          (c.id === convId || (c as any)._id === convId) ? { ...c, lastMessage: message } : c,
         );
 
-        const unreadDelta = state.activeConversationId === convId ? 0 : 1;
+        const isOwnMessage =
+          message.sender?.id === currentUserId ||
+          message.sender?.username === currentUsername ||
+          message.sender?.id === 'me';
+
+        const unreadDelta = state.activeConversationId === convId || isOwnMessage ? 0 : 1;
 
         return {
           messagesByConversation: { ...state.messagesByConversation, [convId]: updatedMessages },

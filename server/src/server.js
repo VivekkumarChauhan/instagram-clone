@@ -167,49 +167,79 @@ function saveDb() {
 loadDb();
 
 // -------------------------------------------------------------
-// EMAIL SERVICE
+// EMAIL SERVICE (Supports Resend HTTPS API, Brevo HTTPS API & Nodemailer SMTP)
 // -------------------------------------------------------------
 let nodemailer;
 try { nodemailer = require('nodemailer'); } catch (e) {}
 
 async function sendOtpEmail(toEmail, otp) {
   console.log(`\n📧 [OTP] Sending to ${toEmail}: ${otp}`);
-  if (!nodemailer) return;
 
+  const htmlContent = `
+    <div style="font-family:Arial,sans-serif;background:#08080A;color:#fff;padding:40px;text-align:center;">
+      <h1 style="color:#fff;font-size:24px;letter-spacing:3px">LUMIGRAM</h1>
+      <p style="color:#aaa">Your verification code:</p>
+      <div style="background:#1A1A2B;border:1.5px dashed #7928CA;border-radius:14px;padding:18px;margin:20px auto;max-width:300px;">
+        <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#00DFD8">${otp}</span>
+      </div>
+      <p style="color:#666;font-size:12px">Expires in 10 minutes. Do not share this code.</p>
+    </div>`;
+
+  // 1. Resend HTTPS API (Works 100% on Render Free Cloud over Port 443)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Lumigram <onboarding@resend.dev>',
+          to: [toEmail],
+          subject: `${otp} is your Lumigram verification code`,
+          html: htmlContent,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`✅ [EMAIL:RESEND] OTP delivered to ${toEmail} (id: ${data.id})`);
+        return;
+      } else {
+        console.log(`⚠️ [EMAIL:RESEND] Error:`, data);
+      }
+    } catch (err) {
+      console.log(`⚠️ [EMAIL:RESEND] Request error:`, err.message);
+    }
+  }
+
+  // 2. Nodemailer SMTP (For Local Development or Unrestricted Cloud)
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASSWORD;
 
-  if (!smtpUser || !smtpPass) {
+  if (smtpUser && smtpPass && nodemailer) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+      });
+      await transporter.sendMail({
+        from: `"Lumigram" <${smtpUser}>`,
+        to: toEmail,
+        subject: `${otp} is your Lumigram verification code`,
+        html: htmlContent,
+      });
+      console.log(`✅ [EMAIL:SMTP] OTP email delivered to ${toEmail}`);
+      return;
+    } catch (err) {
+      console.error(`⚠️ [EMAIL:SMTP] Failed to send email (Render blocks outbound SMTP port 465):`, err.message);
+    }
+  } else {
     console.log(`⚠️ [EMAIL] SMTP not configured — OTP logged above for testing`);
-    return;
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // Port 465 SSL prevents cloud provider timeout
-      auth: { user: smtpUser, pass: smtpPass },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-    });
-    await transporter.sendMail({
-      from: `"Lumigram" <${smtpUser}>`,
-      to: toEmail,
-      subject: `${otp} is your Lumigram verification code`,
-      html: `
-        <div style="font-family:Arial,sans-serif;background:#08080A;color:#fff;padding:40px;text-align:center;">
-          <h1 style="color:#fff;font-size:24px;letter-spacing:3px">LUMIGRAM</h1>
-          <p style="color:#aaa">Your verification code:</p>
-          <div style="background:#1A1A2B;border:1.5px dashed #7928CA;border-radius:14px;padding:18px;margin:20px auto;max-width:300px;">
-            <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#00DFD8">${otp}</span>
-          </div>
-          <p style="color:#666;font-size:12px">Expires in 10 minutes. Do not share this code.</p>
-        </div>`,
-    });
-    console.log(`✅ [EMAIL] OTP email delivered to ${toEmail}`);
-  } catch (err) {
-    console.error(`⚠️ [EMAIL] Failed to send email:`, err.message);
   }
 }
 

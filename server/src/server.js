@@ -185,7 +185,26 @@ async function sendOtpEmail(toEmail, otp) {
       <p style="color:#666;font-size:12px">Expires in 10 minutes. Do not share this code.</p>
     </div>`;
 
-  // 1. Resend HTTPS API (Works 100% on Render Free Cloud over Port 443)
+  // 1. Google Apps Script Webhook (Sends directly from your Gmail over HTTPS Port 443)
+  if (process.env.GOOGLE_MAIL_WEBHOOK_URL) {
+    try {
+      const res = await fetch(process.env.GOOGLE_MAIL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: toEmail,
+          subject: `${otp} is your Lumigram verification code`,
+          html: htmlContent,
+        }),
+      });
+      console.log(`✅ [EMAIL:GOOGLE_WEBHOOK] OTP email sent via Google Apps Script to ${toEmail}`);
+      return;
+    } catch (err) {
+      console.log(`⚠️ [EMAIL:GOOGLE_WEBHOOK] Error:`, err.message);
+    }
+  }
+
+  // 2. Resend HTTPS API (Works 100% on Render Free Cloud over Port 443)
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await fetch('https://api.resend.com/emails', {

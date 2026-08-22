@@ -13,6 +13,7 @@ export interface Message {
   content: string;
   status: MessageStatus;
   createdAt: string;
+  localId?: string;
   isOptimistic?: boolean;
   failedReason?: string;
 }

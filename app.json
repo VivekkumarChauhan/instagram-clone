@@ -1,4 +1,19 @@
 {
   "name": "InstagramClone",
-  "displayName": "Instagram Clone"
+  "displayName": "Instagram Clone",
+  "expo": {
+    "name": "Lumigram",
+    "slug": "instagram-clone",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.instagramclone",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#000000"
+      }
+    },
+    "plugins": []
+  }
 }

@@ -10,15 +10,16 @@
  *   - No USB/adb reverse required
  */
 
-// Update this to your deployed Render URL once live
-const RENDER_URL = 'https://lumigram-api.onrender.com';
+// Live deployed Render URL
+const RENDER_URL = 'https://instagram-clone-backend-za4z.onrender.com';
 
-// In development:
-// - Physical device with `adb reverse tcp:5000 tcp:5000`: 'http://localhost:5000'
-// - Over local Wi-Fi without ADB: 'http://10.183.70.205:5000'
+// Local development fallback
 const DEV_URL = 'http://localhost:5000';
 
-const BASE = __DEV__ ? DEV_URL : RENDER_URL;
+// Set to true to test against live Render backend directly on physical device without ADB
+const USE_PRODUCTION_API = true;
+
+const BASE = USE_PRODUCTION_API ? RENDER_URL : (__DEV__ ? DEV_URL : RENDER_URL);
 
 export const API_BASE_URL = `${BASE}/v1`;
 export const SOCKET_URL = BASE;

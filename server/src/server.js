@@ -185,7 +185,14 @@ async function sendOtpEmail(toEmail, otp) {
   }
 
   try {
-    const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: smtpUser, pass: smtpPass } });
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // Port 465 SSL prevents cloud provider timeout
+      auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+    });
     await transporter.sendMail({
       from: `"Lumigram" <${smtpUser}>`,
       to: toEmail,

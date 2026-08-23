@@ -7,6 +7,10 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 const { v2: cloudinary } = require('cloudinary');
 require('dotenv').config();
 
@@ -214,6 +218,7 @@ async function sendOtpEmail(toEmail, otp) {
         service: 'gmail',
         auth: { user: smtpUser, pass: smtpPass },
         tls: { rejectUnauthorized: false },
+        family: 4,
         connectionTimeout: 10000,
       });
       await transporter.sendMail({
@@ -233,6 +238,7 @@ async function sendOtpEmail(toEmail, otp) {
           secure: false,
           auth: { user: smtpUser, pass: smtpPass },
           tls: { rejectUnauthorized: false },
+          family: 4,
           connectionTimeout: 10000,
         });
         await transporter587.sendMail({

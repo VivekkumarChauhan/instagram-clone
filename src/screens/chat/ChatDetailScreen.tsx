@@ -167,6 +167,8 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           data={messages}
           renderItem={renderMessageBubble}
           keyExtractor={(item, index) => item.id || `msg-${index}`}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           onEndReached={() => {
             if (hasMore && !isLoadingMore) loadMoreMessages(conversationId);
           }}
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 6 : 8,
+    paddingTop: 10,
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',

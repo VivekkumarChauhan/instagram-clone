@@ -148,6 +148,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         const updatedConv = existingConv ? { ...existingConv, lastMessage: message, updatedAt: message.createdAt } : null;
         const otherConvs = state.conversations.filter(c => c.id !== convId && (c as any)._id !== convId);
         const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
+        setItem(MMKV_CONVERSATIONS_KEY, updatedConversations);
 
         const isOwnMessage =
           message.sender?.id === currentUserId ||
@@ -308,24 +309,47 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
     set(state => {
       const existing = state.messagesByConversation[conversationId] ?? [];
+      const updatedMessages = [...existing, optimisticMessage];
+
+      const existingConv = state.conversations.find(c => (c.id === conversationId || (c as any)._id === conversationId));
+      const otherConvs = state.conversations.filter(c => c.id !== conversationId && (c as any)._id !== conversationId);
+      const updatedConv = existingConv
+        ? { ...existingConv, lastMessage: optimisticMessage, updatedAt: optimisticMessage.createdAt }
+        : null;
+      const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
+      setItem(MMKV_CONVERSATIONS_KEY, updatedConversations);
+
       return {
         messagesByConversation: {
           ...state.messagesByConversation,
-          [conversationId]: [...existing, optimisticMessage],
+          [conversationId]: updatedMessages,
         },
+        conversations: updatedConversations,
       };
     });
 
     try {
       const serverMessage = await chatApi.sendMessage(conversationId, content, localId);
-      set(state => ({
-        messagesByConversation: {
-          ...state.messagesByConversation,
-          [conversationId]: (state.messagesByConversation[conversationId] ?? []).map(m =>
-            m.id === localId ? { ...serverMessage, isOptimistic: false } : m,
-          ),
-        },
-      }));
+      set(state => {
+        const updatedMsgs = (state.messagesByConversation[conversationId] ?? []).map(m =>
+          m.id === localId ? { ...serverMessage, isOptimistic: false } : m,
+        );
+        const existingConv = state.conversations.find(c => (c.id === conversationId || (c as any)._id === conversationId));
+        const otherConvs = state.conversations.filter(c => c.id !== conversationId && (c as any)._id !== conversationId);
+        const updatedConv = existingConv
+          ? { ...existingConv, lastMessage: serverMessage, updatedAt: serverMessage.createdAt }
+          : null;
+        const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
+        setItem(MMKV_CONVERSATIONS_KEY, updatedConversations);
+
+        return {
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [conversationId]: updatedMsgs,
+          },
+          conversations: updatedConversations,
+        };
+      });
     } catch {
       set(state => ({
         messagesByConversation: {

@@ -34,30 +34,32 @@ Rather than relying on a single monolithic global store, state is segregated int
 
 ---
 
-## 3. MMKV Caching Strategy
+## 3. Two-Layer Caching Architecture (MMKV + Video Disk Cache)
+
+Lumigram implements a strict separation of concerns between lightweight JSON state and heavy video media binaries:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. MMKV Layer (Metadata & Indexing)                          │
+│    - Reel metadata JSON (id, caption, likes, author, etc.)   │
+│    - Pagination cursor & hasMore state                      │
+│    - video_cache_map (reelId -> local file:// path)         │
+├─────────────────────────────────────────────────────────────┤
+│ 2. Device Video Disk Cache (Binary Stream Storage)          │
+│    - Downloaded .mp4 video files on app cache disk          │
+│    - Dedicated directory `${CachesDirectoryPath}/reels/`    │
+│    - LRU Cache eviction (capped at max 15 videos)           │
+│    - Background predictive preloading of next 1-2 reels     │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Why MMKV?
 - **Speed**: Over 30x faster than standard `AsyncStorage` (~0.2ms vs ~15ms).
 - **Synchronous Execution**: Eliminates the flash of unstyled/empty content (FOUC) on cold app launch by rehydrating the feed before the first frame paint.
-- **Thread Safety**: Multithreaded C++ core accessible across threads.
+- **Thread Safety**: Multithreaded C++ JSI core accessible across threads.
 
-### Cache Versioning (`reels_cache_version`)
-To prevent users from experiencing stale or broken video URLs across schema changes or CDN migrations, the store implements a **cache-busting version**:
-```ts
-const CACHE_VERSION = 2;
-
-hydrateFromCache: () => {
-  const storedVersion = getItem<number>('reels_cache_version');
-  if (storedVersion !== CACHE_VERSION) {
-    setItem('reels_cache', null);
-    setItem('reels_pagination', null);
-    setItem('reels_cache_version', CACHE_VERSION);
-    return;
-  }
-  const cached = getItem<Reel[]>('reels_cache');
-  if (cached?.length) set({ reels: cached });
-}
-```
+### Predictive Video Preloading (`videoCacheService.ts`)
+When the user views reel index $N$, the background manager automatically kicks off download and caching for reels $N+1$ and $N+2$ to the device filesystem. When the user swipes, the video plays from the local `file://` path with **0ms latency**.
 
 ---
 

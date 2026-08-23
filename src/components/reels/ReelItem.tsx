@@ -37,7 +37,7 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   isMuted,
   onToggleMute,
 }) => {
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [is2xSpeed, setIs2xSpeed] = useState(false);
@@ -48,6 +48,7 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   const [scrubPreviewTime, setScrubPreviewTime] = useState<number | null>(null);
 
   const videoRef = useRef<any>(null);
+  const bufferTimerRef = useRef<any>(null);
   const toggleLike = useReelsStore(s => s.toggleLike);
   const toggleFollow = useReelsStore(s => s.toggleFollow);
   const { isOnline } = useNetwork();
@@ -56,8 +57,11 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   useEffect(() => {
     if (isOnline && hasError) {
       setHasError(false);
-      setIsBuffering(true);
+      setIsBuffering(false);
     }
+    return () => {
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+    };
   }, [isOnline, hasError]);
 
   const handleSingleTap = useCallback(() => {
@@ -92,6 +96,7 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   durationRef.current = duration;
 
   const handleLoad = useCallback((data: OnLoadData) => {
+    if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
     setIsBuffering(false);
     setDuration(data.duration);
     durationRef.current = data.duration;
@@ -104,7 +109,15 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   }, [isScrubbing]);
 
   const handleBuffer = useCallback(({ isBuffering: buffering }: { isBuffering: boolean }) => {
-    setIsBuffering(buffering);
+    if (buffering) {
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      bufferTimerRef.current = setTimeout(() => {
+        setIsBuffering(true);
+      }, 700);
+    } else {
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+      setIsBuffering(false);
+    }
   }, []);
 
   const handleSeekPercentage = (pct: number) => {

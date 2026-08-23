@@ -35,14 +35,27 @@ interface ReelsStore extends ReelsServerState, ReelUIState {
   hydrateFromCache: () => void;
 }
 
-const DEFAULT_PAGINATION: ReelsPaginationState = {
-  nextCursor: null,
-  hasMore: true,
-  isFetchingMore: false,
-  lastFetchedAt: null,
+const getInitialReels = (): Reel[] => {
+  try {
+    const cached = getItem<Reel[]>(MMKV_REELS_KEY);
+    return Array.isArray(cached) && cached.length > 0 ? cached : [];
+  } catch {
+    return [];
+  }
 };
 
-const DEFAULT_REELS: Reel[] = [];
+const getInitialPagination = (): ReelsPaginationState => {
+  try {
+    const cached = getItem<ReelsPaginationState>(MMKV_REELS_PAGINATION_KEY);
+    if (cached && typeof cached === 'object') return cached;
+  } catch {}
+  return {
+    nextCursor: null,
+    hasMore: true,
+    isFetchingMore: false,
+    lastFetchedAt: null,
+  };
+};
 
 const DEFAULT_UI: ReelUIState = {
   currentIndex: 0,
@@ -53,11 +66,11 @@ const DEFAULT_UI: ReelUIState = {
 export const useReelsStore = create<ReelsStore>()(
   persist(
     (set, get) => ({
-      reels: DEFAULT_REELS,
+      reels: getInitialReels(),
       isLoading: false,
       isRefreshing: false,
       error: null,
-      pagination: DEFAULT_PAGINATION,
+      pagination: getInitialPagination(),
       ...DEFAULT_UI,
 
       hydrateFromCache: () => {

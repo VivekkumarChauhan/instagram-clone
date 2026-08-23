@@ -53,7 +53,16 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
   const isTyping = useChatStore(
     s => s.typingByConversation[convId] ?? false,
   );
-  const hasUnread = unreadCount > 0;
+
+  const lastMsg = conversation.lastMessage;
+  const lastSenderId = (lastMsg as any)?.senderId || lastMsg?.sender?.id || (lastMsg?.sender as any)?._id;
+  const isLastMsgFromOther =
+    lastMsg &&
+    lastSenderId &&
+    String(lastSenderId) !== String(sessionUserId) &&
+    (lastMsg as any).status !== 'read';
+
+  const hasUnread = unreadCount > 0 || Boolean(isLastMsgFromOther);
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>

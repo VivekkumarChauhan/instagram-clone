@@ -210,29 +210,39 @@ export const useReelsStore = create<ReelsStore>()(
         const { isLoading, reels } = get();
         if (isLoading) return;
 
-        // Trigger background caching for existing reels immediately
-        if (reels && reels.length > 0) {
-          get().cacheReelVideos(reels, 0);
-          return;
+        // Hydrate from cache immediately for frame-0 instant rendering
+        if (!reels || reels.length === 0) {
+          get().hydrateFromCache();
         }
 
-        set({ isLoading: true, error: null });
+        // Trigger background caching for current cached reels
+        const currentReels = get().reels;
+        if (currentReels && currentReels.length > 0) {
+          get().cacheReelVideos(currentReels, get().currentIndex);
+        }
 
+        // Fetch fresh reels from server in background without blocking UI
         try {
           const page = await reelsApi.fetchReels(null, REELS_PAGE_SIZE);
-          const newPagination: ReelsPaginationState = {
-            nextCursor: page.nextCursor,
-            hasMore: page.hasMore,
-            isFetchingMore: false,
-            lastFetchedAt: new Date().toISOString(),
-          };
-          set({ reels: page.reels, isLoading: false, pagination: newPagination });
-          setItem(MMKV_REELS_KEY, page.reels);
-          setItem(MMKV_REELS_PAGINATION_KEY, newPagination);
-          get().cacheReelVideos(page.reels, 0);
+          if (page && page.reels && page.reels.length > 0) {
+            const newPagination: ReelsPaginationState = {
+              nextCursor: page.nextCursor,
+              hasMore: page.hasMore,
+              isFetchingMore: false,
+              lastFetchedAt: new Date().toISOString(),
+            };
+            set({ reels: page.reels, isLoading: false, pagination: newPagination });
+            setItem(MMKV_REELS_KEY, page.reels);
+            setItem(MMKV_REELS_PAGINATION_KEY, newPagination);
+            get().cacheReelVideos(page.reels, get().currentIndex);
+          }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Failed to load reels';
-          set({ isLoading: false, error: message });
+          // If network request fails or device is offline, keep cached reels
+          const current = get().reels;
+          if (!current || current.length === 0) {
+            const message = error instanceof Error ? error.message : 'Failed to load reels';
+            set({ isLoading: false, error: message });
+          }
         }
       },
 

@@ -107,12 +107,15 @@ class VideoCacheService {
           readTimeout: 30000,
         }).promise;
 
-        if (downloadResult.statusCode === 200 || downloadResult.statusCode === 0) {
+        const fileExists = await RNFS.exists(localFilePath);
+        const stat = fileExists ? await RNFS.stat(localFilePath) : null;
+
+        if (fileExists && stat && stat.size > 10000) {
           const map = this.getCacheMap();
           map[reelId] = {
             localPath: localFileUri,
             cachedAt: Date.now(),
-            size: downloadResult.bytesWritten,
+            size: stat.size,
           };
           this.saveCacheMap(map);
 
@@ -120,8 +123,12 @@ class VideoCacheService {
           this.evictOldestCachedVideos(MAX_CACHED_VIDEOS).catch(() => {});
 
           return localFileUri;
+        } else {
+          if (fileExists) {
+            await RNFS.unlink(localFilePath).catch(() => {});
+          }
+          return remoteUrl;
         }
-        return remoteUrl;
       } catch (err) {
         console.warn(`[VideoCacheService] Download failed for reel ${reelId}:`, err);
         return remoteUrl;
@@ -132,6 +139,21 @@ class VideoCacheService {
 
     this.inProgressDownloads.set(reelId, downloadPromise);
     return downloadPromise;
+  }
+
+  /**
+   * Removes a broken or invalid cached video entry
+   */
+  public removeCachedEntry(reelId: string): void {
+    const map = this.getCacheMap();
+    if (map[reelId]) {
+      const path = map[reelId].localPath?.replace('file://', '');
+      if (path) {
+        RNFS.unlink(path).catch(() => {});
+      }
+      delete map[reelId];
+      this.saveCacheMap(map);
+    }
   }
 
   /**

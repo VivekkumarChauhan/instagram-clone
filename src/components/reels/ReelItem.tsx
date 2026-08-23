@@ -20,6 +20,7 @@ import { ReelOverlay } from './ReelOverlay';
 import { DoubleTapHeart } from '@components/common/DoubleTapHeart';
 import { useReelsStore } from '@store/reelsStore';
 import { useNetwork } from '@hooks/useNetwork';
+import { videoCacheService } from '@services/videoCacheService';
 import type { Reel } from '@appTypes/reels';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -200,9 +201,10 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   const handleLike = useCallback(() => toggleLike(reel.id), [toggleLike, reel.id]);
   const handleFollow = useCallback(() => toggleFollow(reel.author.id), [toggleFollow, reel.author.id]);
 
+  const [useFallbackUrl, setUseFallbackUrl] = useState(false);
   const cachedLocalPath = useReelsStore(s => s.videoCacheMap[reel.id]);
-  const resolvedVideoUri = cachedLocalPath || reel.videoUrl;
-  const isLocalCached = Boolean(cachedLocalPath && cachedLocalPath.startsWith('file://'));
+  const resolvedVideoUri = (!useFallbackUrl && cachedLocalPath) ? cachedLocalPath : reel.videoUrl;
+  const isLocalCached = Boolean(!useFallbackUrl && cachedLocalPath && cachedLocalPath.startsWith('file://'));
 
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -255,6 +257,13 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
           onBuffer={handleBuffer}
           onError={(e) => {
             console.warn('[Video Error]', resolvedVideoUri, e);
+            // If local file failed to load (e.g. file missing / ENOENT), auto fallback to remote video URL immediately
+            if (isLocalCached && !useFallbackUrl) {
+              videoCacheService.removeCachedEntry(reel.id);
+              setUseFallbackUrl(true);
+              setHasError(false);
+              return;
+            }
             if (!isLocalCached) {
               setHasError(true);
             }

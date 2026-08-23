@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { zustandMMKVStorage, setItem, getItem } from '@utils/mmkvStorage';
 import { reelsApi } from '@services/api/reelsApi';
+import { videoCacheService } from '@services/videoCacheService';
 import {
   REELS_PAGE_SIZE,
   REELS_PREFETCH_THRESHOLD,
@@ -22,6 +23,7 @@ import type {
 
 interface ReelsStore extends ReelsServerState, ReelUIState {
   pagination: ReelsPaginationState;
+  videoCacheMap: Record<string, string>;
 
   loadInitialReels: () => Promise<void>;
   fetchMoreReels: () => Promise<void>;
@@ -33,6 +35,7 @@ interface ReelsStore extends ReelsServerState, ReelUIState {
   setPlaybackState: (reelId: string, state: VideoPlaybackState) => void;
   checkAndFetchMore: (currentIndex: number) => void;
   hydrateFromCache: () => void;
+  cacheReelVideos: (reelsList: Reel[], priorityIndex?: number) => void;
 }
 
 const DEFAULT_SEED_REELS: Reel[] = [
@@ -130,6 +133,21 @@ const getInitialPagination = (): ReelsPaginationState => {
   };
 };
 
+const getInitialVideoCacheMap = (): Record<string, string> => {
+  try {
+    const rawMap = videoCacheService.getCacheMap();
+    const result: Record<string, string> = {};
+    for (const [id, meta] of Object.entries(rawMap)) {
+      if (meta && meta.localPath) {
+        result[id] = meta.localPath;
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+};
+
 const DEFAULT_UI: ReelUIState = {
   currentIndex: 0,
   isMuted: false,
@@ -144,25 +162,57 @@ export const useReelsStore = create<ReelsStore>()(
       isRefreshing: false,
       error: null,
       pagination: getInitialPagination(),
+      videoCacheMap: getInitialVideoCacheMap(),
       ...DEFAULT_UI,
 
       hydrateFromCache: () => {
         const cached = getInitialReels();
         const pagination = getInitialPagination();
+        const videoMap = getInitialVideoCacheMap();
         if (cached && cached.length > 0) {
           set({ reels: cached });
         }
         if (pagination) {
           set({ pagination });
         }
+        if (videoMap) {
+          set({ videoCacheMap: videoMap });
+        }
+      },
+
+      cacheReelVideos: (reelsList: Reel[], priorityIndex: number = 0) => {
+        if (!reelsList || reelsList.length === 0) return;
+
+        // Order download priority: priorityIndex first, then next 1-2 reels
+        const ordered = [...reelsList].sort((a, b) => {
+          const idxA = reelsList.indexOf(a);
+          const idxB = reelsList.indexOf(b);
+          const distA = Math.abs(idxA - priorityIndex);
+          const distB = Math.abs(idxB - priorityIndex);
+          return distA - distB;
+        });
+
+        // Background download top 5 nearest reels
+        ordered.slice(0, 5).forEach(reel => {
+          if (reel.videoUrl && !get().videoCacheMap[reel.id]) {
+            videoCacheService.downloadAndCacheVideo(reel.id, reel.videoUrl).then(localPath => {
+              if (localPath && localPath.startsWith('file://')) {
+                set(state => ({
+                  videoCacheMap: { ...state.videoCacheMap, [reel.id]: localPath },
+                }));
+              }
+            }).catch(() => {});
+          }
+        });
       },
 
       loadInitialReels: async () => {
         const { isLoading, reels } = get();
         if (isLoading) return;
 
-        // If reels are already cached in MMKV local storage, don't show any loader or re-fetch!
+        // Trigger background caching for existing reels immediately
         if (reels && reels.length > 0) {
+          get().cacheReelVideos(reels, 0);
           return;
         }
 
@@ -179,6 +229,7 @@ export const useReelsStore = create<ReelsStore>()(
           set({ reels: page.reels, isLoading: false, pagination: newPagination });
           setItem(MMKV_REELS_KEY, page.reels);
           setItem(MMKV_REELS_PAGINATION_KEY, newPagination);
+          get().cacheReelVideos(page.reels, 0);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to load reels';
           set({ isLoading: false, error: message });
@@ -207,6 +258,7 @@ export const useReelsStore = create<ReelsStore>()(
             setItem(MMKV_REELS_PAGINATION_KEY, newPagination);
             return { reels: updatedReels, pagination: newPagination };
           });
+          get().cacheReelVideos(get().reels, get().currentIndex);
         } catch {
           set(state => ({ pagination: { ...state.pagination, isFetchingMore: false } }));
         }
@@ -228,6 +280,7 @@ export const useReelsStore = create<ReelsStore>()(
           set({ reels: page.reels, isRefreshing: false, currentIndex: 0, pagination: newPagination });
           setItem(MMKV_REELS_KEY, page.reels);
           setItem(MMKV_REELS_PAGINATION_KEY, newPagination);
+          get().cacheReelVideos(page.reels, 0);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to refresh reels';
           set({ isRefreshing: false, error: message });
@@ -284,7 +337,10 @@ export const useReelsStore = create<ReelsStore>()(
         }
       },
 
-      setCurrentIndex: (index) => set({ currentIndex: index }),
+      setCurrentIndex: (index) => {
+        set({ currentIndex: index });
+        get().cacheReelVideos(get().reels, index);
+      },
       toggleMute: () => set(state => ({ isMuted: !state.isMuted })),
 
       setPlaybackState: (reelId, playbackState) =>
@@ -318,4 +374,6 @@ export const selectIsMuted = (s: ReelsStore) => s.isMuted;
 export const selectIsReelsLoading = (s: ReelsStore) => s.isLoading;
 export const selectReelsPagination = (s: ReelsStore) => s.pagination;
 export const selectReelsError = (s: ReelsStore) => s.error;
+export const selectVideoCacheMap = (s: ReelsStore) => s.videoCacheMap;
 export const selectPlaybackState = (reelId: string) => (s: ReelsStore) => s.playbackStates[reelId];
+

@@ -187,6 +187,10 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   const handleLike = useCallback(() => toggleLike(reel.id), [toggleLike, reel.id]);
   const handleFollow = useCallback(() => toggleFollow(reel.author.id), [toggleFollow, reel.author.id]);
 
+  const cachedLocalPath = useReelsStore(s => s.videoCacheMap[reel.id]);
+  const resolvedVideoUri = cachedLocalPath || reel.videoUrl;
+  const isLocalCached = Boolean(cachedLocalPath && cachedLocalPath.startsWith('file://'));
+
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const remainingSecs = Math.floor(secs % 60);
@@ -211,10 +215,10 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
         resizeMode="cover"
       />
 
-      {isActive && !hasError ? (
+      {isActive && (!hasError || isLocalCached) ? (
         <Video
           ref={videoRef}
-          source={{ uri: reel.videoUrl }}
+          source={{ uri: resolvedVideoUri }}
           style={videoStyle}
           resizeMode="cover"
           repeat
@@ -237,8 +241,10 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
           onProgress={handleProgress}
           onBuffer={handleBuffer}
           onError={(e) => {
-            console.warn('[Video Error]', reel.videoUrl, e);
-            setHasError(true);
+            console.warn('[Video Error]', resolvedVideoUri, e);
+            if (!isLocalCached) {
+              setHasError(true);
+            }
             setIsBuffering(false);
           }}
           ignoreSilentSwitch="ignore"
@@ -261,7 +267,7 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
             >
               <Icon name="cloud-offline-outline" size={32} color="#FFFFFF" style={{ marginBottom: 6 }} />
               <Text style={styles.errorText}>Offline Mode</Text>
-              <Text style={styles.errorSubText}>Tap to retry stream</Text>
+              <Text style={styles.errorSubText}>Video not cached. Tap to retry stream</Text>
             </TouchableOpacity>
           )}
         </View>

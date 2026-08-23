@@ -49,12 +49,10 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.avatarWrapper}>
-        <StoryRing size={56} hasStory={!conversation.isOnline} isSeen={false}>
-          <Image
-            source={{ uri: displayAvatar }}
-            style={styles.avatar}
-          />
-        </StoryRing>
+        <Image
+          source={{ uri: displayAvatar }}
+          style={styles.avatar}
+        />
         {conversation.isOnline && <View style={styles.onlineBadge} />}
       </View>
 

@@ -32,6 +32,7 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       user: null,
       status: 'idle',
+      isLoading: false,
       error: null,
 
       hydrateSession: () => {
@@ -45,14 +46,14 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       login: async (request) => {
-        set({ status: 'loading', error: null });
+        set({ status: 'loading', isLoading: true, error: null });
         try {
           const session = await authApi.login(request);
           saveTokens(session.tokens.accessToken, session.tokens.refreshToken);
-          set({ user: session.user, status: 'authenticated', error: null });
+          set({ user: session.user, status: 'authenticated', isLoading: false, error: null });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Login failed';
-          set({ status: 'unauthenticated', error: message });
+          set({ status: 'unauthenticated', isLoading: false, error: message });
           throw error;
         }
       },
@@ -62,7 +63,7 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const result = await authApi.signUp(request);
           set({ status: 'unauthenticated', isLoading: false, error: null });
-          return { email: result.email, otp: (result as any).otpPreview || (result as any).otp };
+          return { email: result.email, otp: (result as any).previewOtp || (result as any).otpPreview || (result as any).otp };
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Sign up failed';
           set({ status: 'unauthenticated', isLoading: false, error: message });

@@ -224,9 +224,13 @@ export const useReelsStore = create<ReelsStore>()(
       },
     }),
     {
-      name: 'reels-ui-prefs',
+      name: 'lumigram-reels-storage',
       storage: createJSONStorage(() => zustandMMKVStorage),
-      partialize: (state) => ({ isMuted: state.isMuted }),
+      partialize: (state) => ({
+        reels: state.reels,
+        pagination: state.pagination,
+        isMuted: state.isMuted,
+      }),
     },
   ),
 );

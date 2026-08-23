@@ -25,7 +25,8 @@ type Props = AuthScreenProps<'OTPVerification'>;
 export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const email = route.params?.email || 'user@example.com';
   const purpose = route.params?.purpose || 'email_verification';
-  const [otp, setOtp] = useState('');
+  const previewCode = route.params?.receivedOtp || (route.params as any)?.previewOtp || '';
+  const [otp, setOtp] = useState(previewCode);
   const [resendTimer, setResendTimer] = useState(60);
   const inputRef = useRef<TextInput>(null);
 

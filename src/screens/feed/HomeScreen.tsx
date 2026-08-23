@@ -50,6 +50,12 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
   const user = useAuthStore(s => s.user);
   const reels = useReelsStore(s => s.reels);
   const toggleLike = useReelsStore(s => s.toggleLike);
+  const loadInitialReels = useReelsStore(s => s.loadInitialReels);
+  const setCurrentIndex = useReelsStore(s => s.setCurrentIndex);
+
+  React.useEffect(() => {
+    loadInitialReels();
+  }, [loadInitialReels]);
 
   const renderStoriesTray = () => (
     <View style={styles.storiesContainer}>
@@ -71,7 +77,7 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
     </View>
   );
 
-  const renderPost = ({ item }: { item: any }) => (
+  const renderPost = ({ item, index }: { item: any; index: number }) => (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <View style={styles.postAuthorRow}>
@@ -95,7 +101,13 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
       </View>
 
       <DoubleTapHeart onDoubleTap={() => toggleLike(item.id)}>
-        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Reels')}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => {
+            setCurrentIndex(index);
+            navigation.navigate('Reels');
+          }}
+        >
           <Image
             source={{ uri: item.thumbnailUrl || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400' }}
             style={styles.postMedia}
@@ -201,7 +213,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0,
   },
   topBar: {
     height: 52,

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -34,18 +35,56 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
   const error = useAuthStore(s => s.error);
   const clearError = useAuthStore(s => s.clearError);
 
+  // Focus input on mount
   useEffect(() => {
     const focusTimer = setTimeout(() => {
       inputRef.current?.focus();
-    }, 300);
+    }, 250);
     return () => clearTimeout(focusTimer);
   }, []);
 
+  // Handle AppState changes (prevent screen freeze when pulling down notification shade / backgrounding)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        // Re-focus and reset any stuck keyboard transitions
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 150);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Safe countdown timer
   useEffect(() => {
     if (resendTimer <= 0) return;
-    const interval = setInterval(() => setResendTimer(t => t - 1), 1000);
+    const interval = setInterval(() => {
+      setResendTimer(t => {
+        if (t <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  const handleVerify = useCallback(
+    async (codeToVerify?: string) => {
+      const code = codeToVerify || otp;
+      if (code.length < 6 || isLoading) return;
+      try {
+        await verifyOTP({ email, otp: code, purpose });
+      } catch (_) {}
+    },
+    [email, otp, purpose, isLoading, verifyOTP],
+  );
 
   const handleOtpChange = (text: string) => {
     if (error) clearError();
@@ -57,16 +96,8 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
     }
   };
 
-  const handleVerify = async (codeToVerify?: string) => {
-    const code = codeToVerify || otp;
-    if (code.length < 6) return;
-    try {
-      await verifyOTP({ email, otp: code, purpose });
-    } catch (_) {}
-  };
-
   const handleResend = async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || isLoading) return;
     try {
       await forgotPassword({ email });
       setResendTimer(60);
@@ -91,6 +122,7 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="arrow-back" size={24} color={THEME.colors.textPrimary} />
         </TouchableOpacity>
@@ -119,47 +151,48 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
             </View>
           )}
 
-          <Pressable
-            onPress={() => inputRef.current?.focus()}
-            style={styles.digitsRow}
-          >
-            {[0, 1, 2, 3, 4, 5].map((index) => {
-              const char = otp[index] || '';
-              const isFocused = otp.length === index || (index === 5 && otp.length === 6);
-              const isFilled = Boolean(char);
+          {/* Digits Container with absolute transparent input on top */}
+          <View style={styles.digitsWrapper}>
+            <View style={styles.digitsRow} pointerEvents="none">
+              {[0, 1, 2, 3, 4, 5].map((index) => {
+                const char = otp[index] || '';
+                const isFocused = otp.length === index || (index === 5 && otp.length === 6);
+                const isFilled = Boolean(char);
 
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.digitBox,
-                    isFilled && styles.digitBoxFilled,
-                    isFocused && styles.digitBoxActive,
-                  ]}
-                >
-                  <Text style={styles.digitText}>{char}</Text>
-                </View>
-              );
-            })}
-          </Pressable>
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.digitBox,
+                      isFilled && styles.digitBoxFilled,
+                      isFocused && styles.digitBoxActive,
+                    ]}
+                  >
+                    <Text style={styles.digitText}>{char}</Text>
+                  </View>
+                );
+              })}
+            </View>
 
-          <TextInput
-            ref={inputRef}
-            value={otp}
-            onChangeText={handleOtpChange}
-            maxLength={6}
-            keyboardType="number-pad"
-            returnKeyType="done"
-            style={styles.hiddenInput}
-            autoFocus
-            caretHidden
-          />
+            {/* Transparent input covering entire digit row for 100% reliable tap response */}
+            <TextInput
+              ref={inputRef}
+              value={otp}
+              onChangeText={handleOtpChange}
+              maxLength={6}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              style={styles.overlayInput}
+              autoFocus
+              caretHidden
+            />
+          </View>
 
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => handleVerify()}
             disabled={otp.length < 6 || isLoading}
-            style={[styles.verifyBtn, otp.length < 6 && styles.btnDisabled]}
+            style={[styles.verifyBtn, (otp.length < 6 || isLoading) && styles.btnDisabled]}
           >
             <LinearGradient
               colors={[...THEME.colors.gradients.brand]}
@@ -180,11 +213,11 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
 
           <View style={styles.resendRow}>
             <Text style={styles.resendLabel}>Didn't receive code? </Text>
-            <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0}>
+            <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0 || isLoading}>
               <Text
                 style={[
                   styles.resendAction,
-                  resendTimer > 0 && styles.resendActionDisabled,
+                  (resendTimer > 0 || isLoading) && styles.resendActionDisabled,
                 ]}
               >
                 {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
@@ -219,62 +252,66 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     position: 'absolute',
-    top: 16,
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 20,
     left: 20,
-    zIndex: 10,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.colors.surfaceCard,
+    backgroundColor: THEME.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 10,
     borderWidth: 1,
     borderColor: THEME.colors.border,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   iconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    ...THEME.shadows.glowBrand,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
     color: THEME.colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
     color: THEME.colors.textSecondary,
+    fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
   },
   emailHighlight: {
-    color: THEME.colors.accent,
+    color: THEME.colors.textPrimary,
     fontWeight: '700',
   },
   glassCard: {
     backgroundColor: THEME.colors.surfaceCard,
-    borderRadius: THEME.radius.xl,
+    borderRadius: THEME.radius.lg,
     padding: 24,
     borderWidth: 1,
     borderColor: THEME.colors.border,
-    ...THEME.shadows.card,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 77, 77, 0.12)',
+    backgroundColor: 'rgba(255, 77, 77, 0.1)',
     borderRadius: THEME.radius.sm,
-    padding: 10,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 77, 77, 0.3)',
   },
@@ -283,19 +320,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1,
   },
+  digitsWrapper: {
+    position: 'relative',
+    height: 56,
+    marginBottom: 28,
+  },
   digitsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 8,
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   digitBox: {
-    flex: 1,
-    height: 54,
-    borderRadius: THEME.radius.md,
-    backgroundColor: THEME.colors.surfaceInput,
+    width: 46,
+    height: 56,
+    borderRadius: THEME.radius.sm,
     borderWidth: 1.5,
     borderColor: THEME.colors.border,
+    backgroundColor: THEME.colors.surfaceInput,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -311,11 +354,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
   },
-  hiddenInput: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0,
+  overlayInput: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.01,
+    color: 'transparent',
+    backgroundColor: 'transparent',
   },
   verifyBtn: {
     height: 50,

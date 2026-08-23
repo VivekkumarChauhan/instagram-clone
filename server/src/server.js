@@ -741,6 +741,9 @@ function formatConversation(c) {
   if (!c) return null;
   const obj = c.toObject ? c.toObject() : { ...c };
   obj.id = (obj._id || obj.id).toString();
+  if (!obj.participants || obj.participants.length === 0) {
+    obj.participants = obj.participantDetails || [];
+  }
   return obj;
 }
 

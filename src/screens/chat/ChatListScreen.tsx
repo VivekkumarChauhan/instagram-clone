@@ -188,8 +188,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   topHeader: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 4 : 4,
-    height: Platform.OS === 'android' ? 52 + (StatusBar.currentHeight || 28) : 52,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

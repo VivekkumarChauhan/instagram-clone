@@ -135,6 +135,12 @@ export const ReelsScreen: React.FC = () => {
         initialNumToRender={2}
         maxToRenderPerBatch={2}
         windowSize={3}
+        initialScrollIndex={currentIndex > 0 && currentIndex < reels.length ? currentIndex : undefined}
+        onScrollToIndexFailed={info => {
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({ index: info.index, animated: false });
+          }, 100);
+        }}
         getItemLayout={(_, index) => ({
           length: containerHeight,
           offset: containerHeight * index,

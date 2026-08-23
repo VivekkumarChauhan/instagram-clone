@@ -143,9 +143,10 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         const persistSlice = updatedMessages.slice(-MAX_CACHED_MESSAGES_PER_CONVERSATION);
         setItem(`${MMKV_MESSAGES_PREFIX}${convId}`, persistSlice);
 
-        const updatedConversations = state.conversations.map(c =>
-          (c.id === convId || (c as any)._id === convId) ? { ...c, lastMessage: message } : c,
-        );
+        const existingConv = state.conversations.find(c => (c.id === convId || (c as any)._id === convId));
+        const updatedConv = existingConv ? { ...existingConv, lastMessage: message, updatedAt: message.createdAt } : null;
+        const otherConvs = state.conversations.filter(c => c.id !== convId && (c as any)._id !== convId);
+        const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
 
         const isOwnMessage =
           message.sender?.id === currentUserId ||
@@ -224,13 +225,18 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     set({ isLoadingConversations: true });
     try {
       const page = await chatApi.fetchConversations(null);
+      const sorted = (page.conversations || []).sort((a, b) => {
+        const timeA = new Date(a.lastMessage?.createdAt || a.updatedAt || 0).getTime();
+        const timeB = new Date(b.lastMessage?.createdAt || b.updatedAt || 0).getTime();
+        return timeB - timeA;
+      });
       set({
-        conversations: page.conversations,
+        conversations: sorted,
         conversationsCursor: page.nextCursor,
         hasMoreConversations: page.hasMore,
         isLoadingConversations: false,
       });
-      setItem(MMKV_CONVERSATIONS_KEY, page.conversations);
+      setItem(MMKV_CONVERSATIONS_KEY, sorted);
     } catch {
       set({ isLoadingConversations: false });
     }

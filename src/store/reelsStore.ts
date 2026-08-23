@@ -81,12 +81,16 @@ export const useReelsStore = create<ReelsStore>()(
       },
 
       loadInitialReels: async () => {
-        const { isLoading, pagination } = get();
+        const { isLoading } = get();
         if (isLoading) return;
 
         get().hydrateFromCache();
+        const hasCached = get().reels.length > 0;
 
-        set({ isLoading: true, error: null });
+        if (!hasCached) {
+          set({ isLoading: true, error: null });
+        }
+
         try {
           const page = await reelsApi.fetchReels(null, REELS_PAGE_SIZE);
           const newPagination: ReelsPaginationState = {

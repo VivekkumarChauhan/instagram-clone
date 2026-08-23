@@ -130,9 +130,12 @@ export const UploadReelScreen: React.FC<MainTabScreenProps<'Create'>> = ({ navig
           style={[styles.publishButton, (!videoUri || isUploading) && styles.publishButtonDisabled]}
         >
           {isUploading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.publishButtonText}>{uploadProgress}%</Text>
+            </View>
           ) : (
-            <Text style={styles.publishButtonText}>Share</Text>
+            <Text style={styles.publishButtonText}>Upload</Text>
           )}
         </TouchableOpacity>
       </View>

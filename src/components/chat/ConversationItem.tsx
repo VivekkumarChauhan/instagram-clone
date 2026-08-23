@@ -4,6 +4,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { StoryRing } from '@components/common/StoryRing';
 import { formatRelativeTime } from '@utils/timeUtils';
 import { COLORS } from '@utils/constants';
+import { useAuthStore } from '@store/authStore';
+import { useChatStore } from '@store/chatStore';
 import type { Conversation } from '@appTypes/chat';
 
 interface ConversationItemProps {
@@ -12,15 +14,44 @@ interface ConversationItemProps {
 }
 
 export const ConversationItem: React.FC<ConversationItemProps> = memo(({ conversation, onPress }) => {
-  const participant = conversation.participants[0];
-  const hasUnread = conversation.unreadCount > 0;
+  const sessionUser = useAuthStore(s => s.user);
+  const sessionUserId = sessionUser?.id || (sessionUser as any)?._id;
+  const sessionUsername = sessionUser?.username;
+
+  // Resolve the actual other user from participantDetails or participants
+  const participantsList =
+    (conversation as any).participantDetails || conversation.participants || [];
+
+  const otherUser =
+    participantsList.find((p: any) => {
+      const pId = p.id || p._id;
+      return (
+        (sessionUserId && pId !== sessionUserId) ||
+        (sessionUsername && p.username !== sessionUsername)
+      );
+    }) ||
+    participantsList[0] ||
+    {};
+
+  const displayName = otherUser.username || otherUser.fullName || 'Direct';
+  const displayAvatar =
+    otherUser.profilePicture ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
+
+  const unreadCount = useChatStore(
+    s => s.unreadCountByConversation[conversation.id] ?? conversation.unreadCount ?? 0,
+  );
+  const isTyping = useChatStore(
+    s => s.typingByConversation[conversation.id] ?? false,
+  );
+  const hasUnread = unreadCount > 0;
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.avatarWrapper}>
         <StoryRing size={56} hasStory={!conversation.isOnline} isSeen={false}>
           <Image
-            source={{ uri: participant?.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+            source={{ uri: displayAvatar }}
             style={styles.avatar}
           />
         </StoryRing>
@@ -29,23 +60,25 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
 
       <View style={styles.content}>
         <Text style={[styles.name, hasUnread && styles.nameBold]} numberOfLines={1}>
-          {participant?.username ?? 'Unknown'}
+          {displayName}
         </Text>
 
         <View style={styles.messageRow}>
-          {conversation.isTyping ? (
+          {isTyping ? (
             <Text style={styles.typing}>Typing...</Text>
           ) : (
             <Text
               style={[styles.lastMessage, hasUnread && styles.lastMessageBold]}
               numberOfLines={1}
             >
-              {conversation.lastMessage?.content ?? 'Sent an attachment'}
+              {conversation.lastMessage?.content ?? 'Tap to chat'}
             </Text>
           )}
-          <Text style={[styles.timeDot, hasUnread && styles.timeDotUnread]}>
-            {' '}· {conversation.lastMessage ? formatRelativeTime(conversation.lastMessage.createdAt) : '2h'}
-          </Text>
+          {conversation.lastMessage?.createdAt && (
+            <Text style={[styles.timeDot, hasUnread && styles.timeDotUnread]}>
+              {' '}· {formatRelativeTime(conversation.lastMessage.createdAt)}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -98,12 +131,13 @@ const styles = StyleSheet.create({
   },
   name: {
     color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 3,
   },
   nameBold: {
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   messageRow: {
     flexDirection: 'row',
@@ -137,9 +171,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   unreadBlueDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: COLORS.primary,
   },
   cameraBtn: {

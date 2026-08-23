@@ -19,6 +19,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { ReelOverlay } from './ReelOverlay';
 import { DoubleTapHeart } from '@components/common/DoubleTapHeart';
 import { useReelsStore } from '@store/reelsStore';
+import { useNetwork } from '@hooks/useNetwork';
 import type { Reel } from '@appTypes/reels';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -49,6 +50,15 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
   const videoRef = useRef<any>(null);
   const toggleLike = useReelsStore(s => s.toggleLike);
   const toggleFollow = useReelsStore(s => s.toggleFollow);
+  const { isOnline } = useNetwork();
+
+  // Auto-retry video playback when device reconnects to network
+  useEffect(() => {
+    if (isOnline && hasError) {
+      setHasError(false);
+      setIsBuffering(true);
+    }
+  }, [isOnline, hasError]);
 
   const handleSingleTap = useCallback(() => {
     if (isActive) {
@@ -249,7 +259,9 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
               }}
               activeOpacity={0.8}
             >
-              <Text style={styles.errorText}>⚠️ Failed to load. Tap to retry</Text>
+              <Icon name="cloud-offline-outline" size={32} color="#FFFFFF" style={{ marginBottom: 6 }} />
+              <Text style={styles.errorText}>Offline Mode</Text>
+              <Text style={styles.errorSubText}>Tap to retry stream</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -369,6 +381,14 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  errorSubText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 2,
   },
   bufferingOverlay: {
     ...StyleSheet.absoluteFillObject,

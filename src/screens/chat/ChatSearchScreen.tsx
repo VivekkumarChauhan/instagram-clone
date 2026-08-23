@@ -54,18 +54,26 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
     searchUsers(trimmed, abortControllerRef.current.signal);
   }, [debouncedQuery, searchUsers, clearSearch]);
 
+  const [openingUserId, setOpeningUserId] = useState<string | null>(null);
+  const addOrUpdateConversation = useChatStore(s => s.addOrUpdateConversation);
+
   const handleUserPress = useCallback(
     async (user: UserSearchResult) => {
+      setOpeningUserId(user.id);
       addRecentSearch(user);
       try {
         const res = await chatApi.createOrGetConversation(user.id);
-        const conversationId = (res.conversation as any)._id || res.conversation.id;
+        const conv = res.conversation;
+        const conversationId = (conv as any)._id || conv.id;
+        addOrUpdateConversation(conv);
+        setOpeningUserId(null);
         navigation.navigate('ChatDetail', {
           conversationId,
           participantName: user.username,
           participantAvatar: user.profilePicture,
         });
       } catch {
+        setOpeningUserId(null);
         const conversationId = `conv-${user.id}`;
         navigation.navigate('ChatDetail', {
           conversationId,
@@ -74,7 +82,7 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
         });
       }
     },
-    [addRecentSearch, navigation],
+    [addRecentSearch, addOrUpdateConversation, navigation],
   );
 
   const handleClear = useCallback(() => {
@@ -84,20 +92,32 @@ export const ChatSearchScreen: React.FC<Props> = ({ navigation }) => {
   }, [clearSearch]);
 
   const renderUserItem = useCallback(
-    ({ item }: { item: UserSearchResult }) => (
-      <TouchableOpacity style={styles.userItem} onPress={() => handleUserPress(item)}>
-        <Image
-          source={{ uri: item.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
-          style={styles.userAvatar}
-        />
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{item.username}</Text>
-          <Text style={styles.fullName}>{item.fullName}</Text>
-        </View>
-        {item.isVerified && <Text style={styles.verified}>✓</Text>}
-      </TouchableOpacity>
-    ),
-    [handleUserPress],
+    ({ item }: { item: UserSearchResult }) => {
+      const isOpening = openingUserId === item.id;
+      return (
+        <TouchableOpacity
+          style={styles.userItem}
+          onPress={() => handleUserPress(item)}
+          disabled={Boolean(openingUserId)}
+          activeOpacity={0.7}
+        >
+          <Image
+            source={{ uri: item.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
+            style={styles.userAvatar}
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.username}>{item.username}</Text>
+            <Text style={styles.fullName}>{item.fullName}</Text>
+          </View>
+          {isOpening ? (
+            <ActivityIndicator size="small" color="#0095F6" style={{ marginLeft: 8 }} />
+          ) : item.isVerified ? (
+            <Text style={styles.verified}>✓</Text>
+          ) : null}
+        </TouchableOpacity>
+      );
+    },
+    [handleUserPress, openingUserId],
   );
 
   const isShowingResults = query.trim().length >= SEARCH_MIN_CHARS;

@@ -19,6 +19,7 @@ import { useAuthStore } from '@store/authStore';
 import { useChatStore, selectConversations } from '@store/chatStore';
 import { COLORS } from '@utils/constants';
 import type { Conversation } from '@appTypes/chat';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { ChatScreenProps } from '@appTypes/navigation';
 
 type Props = ChatScreenProps<'ChatList'>;
@@ -41,10 +42,15 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'messages' | 'requests'>('messages');
 
   useEffect(() => {
-    loadConversations();
     connectSocket();
     return () => disconnectSocket();
-  }, [loadConversations, connectSocket, disconnectSocket]);
+  }, [connectSocket, disconnectSocket]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+    }, [loadConversations]),
+  );
 
   const sessionUserId = sessionUser?.id || (sessionUser as any)?._id;
   const sessionUsername = sessionUser?.username;
@@ -167,6 +173,8 @@ export const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           data={conversations}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          refreshing={isLoading}
+          onRefresh={loadConversations}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>

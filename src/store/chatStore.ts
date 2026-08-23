@@ -62,6 +62,7 @@ interface ChatActions {
   addRecentSearch: (user: UserSearchResult) => void;
   hydrateFromCache: () => void;
   markConversationRead: (conversationId: string) => void;
+  addOrUpdateConversation: (conversation: any) => void;
   reset: () => void;
 }
 
@@ -313,10 +314,24 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
       const existingConv = state.conversations.find(c => (c.id === conversationId || (c as any)._id === conversationId));
       const otherConvs = state.conversations.filter(c => c.id !== conversationId && (c as any)._id !== conversationId);
-      const updatedConv = existingConv
+      const updatedConv: Conversation = existingConv
         ? { ...existingConv, lastMessage: optimisticMessage, updatedAt: optimisticMessage.createdAt }
-        : null;
-      const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
+        : {
+            id: conversationId,
+            participants: [
+              {
+                id: currentUser?.id || 'me',
+                username: currentUser?.username || 'me',
+                profilePicture: currentUser?.profilePicture || '',
+                isOnline: true,
+              },
+            ],
+            lastMessage: optimisticMessage,
+            unreadCount: 0,
+            updatedAt: optimisticMessage.createdAt,
+            createdAt: optimisticMessage.createdAt,
+          };
+      const updatedConversations = [updatedConv, ...otherConvs];
       setItem(MMKV_CONVERSATIONS_KEY, updatedConversations);
 
       return {
@@ -336,10 +351,24 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         );
         const existingConv = state.conversations.find(c => (c.id === conversationId || (c as any)._id === conversationId));
         const otherConvs = state.conversations.filter(c => c.id !== conversationId && (c as any)._id !== conversationId);
-        const updatedConv = existingConv
+        const updatedConv: Conversation = existingConv
           ? { ...existingConv, lastMessage: serverMessage, updatedAt: serverMessage.createdAt }
-          : null;
-        const updatedConversations = updatedConv ? [updatedConv, ...otherConvs] : state.conversations;
+          : {
+              id: conversationId,
+              participants: [
+                {
+                  id: currentUser?.id || 'me',
+                  username: currentUser?.username || 'me',
+                  profilePicture: currentUser?.profilePicture || '',
+                  isOnline: true,
+                },
+              ],
+              lastMessage: serverMessage,
+              unreadCount: 0,
+              updatedAt: serverMessage.createdAt,
+              createdAt: serverMessage.createdAt,
+            };
+        const updatedConversations = [updatedConv, ...otherConvs];
         setItem(MMKV_CONVERSATIONS_KEY, updatedConversations);
 
         return {
@@ -397,17 +426,18 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   searchUsers: async (query, signal) => {
+    if (!query.trim()) {
+      set({ searchResults: [], isSearching: false, searchError: null });
+      return;
+    }
     set({ isSearching: true, searchError: null });
     try {
       const response = await chatApi.searchUsers(query, null);
-      if (!signal?.aborted) {
-        set({ searchResults: response.users, isSearching: false });
-      }
+      set({ searchResults: response.users || [], isSearching: false });
     } catch (error) {
-      if (!signal?.aborted) {
-        const message = error instanceof Error ? error.message : 'Search failed';
-        set({ searchError: message, isSearching: false, searchResults: [] });
-      }
+      if ((error as any)?.name === 'CanceledError' || (error as any)?.name === 'AbortError') return;
+      const message = error instanceof Error ? error.message : 'Search failed';
+      set({ isSearching: false, searchError: message });
     }
   },
 
@@ -431,6 +461,23 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       ),
       unreadCountByConversation: { ...state.unreadCountByConversation, [conversationId]: 0 },
     }));
+  },
+
+  addOrUpdateConversation: (conversation) => {
+    if (!conversation) return;
+    const convId = conversation.id || conversation._id;
+    set(state => {
+      const normalizedConv: Conversation = {
+        ...conversation,
+        id: convId,
+      };
+      const filtered = state.conversations.filter(
+        c => c.id !== convId && (c as any)._id !== convId,
+      );
+      const updated = [normalizedConv, ...filtered];
+      setItem(MMKV_CONVERSATIONS_KEY, updated);
+      return { conversations: updated };
+    });
   },
 
   reset: () => {

@@ -53,7 +53,23 @@ const isMuted = useReelsStore(selectIsMuted);      // only re-renders when mute 
 
 ---
 
-## 3. MMKV Caching Strategy
+## 3. MMKV Caching Strategy & Two-Layer Architecture
+
+The app uses a strict **two-layer caching architecture** to separate lightweight JSON metadata from heavy video binary streams:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. MMKV Layer (Metadata & Indexing)                          │
+│    - Reel metadata JSON (id, caption, likes, author, etc.)   │
+│    - Pagination cursor & hasMore state                      │
+│    - video_cache_map (reelId -> local file:// path)         │
+├─────────────────────────────────────────────────────────────┤
+│ 2. Device Video Disk Cache (Binary Stream Storage)          │
+│    - Downloaded .mp4 video files on app cache disk          │
+│    - LRU Cache eviction (capped at max 15 videos)           │
+│    - Background predictive preloading of next 1-2 reels     │
+└─────────────────────────────────────────────────────────────┘
+```
 
 | Data | Storage | Key | Eviction |
 |---|---|---|---|
@@ -61,12 +77,15 @@ const isMuted = useReelsStore(selectIsMuted);      // only re-renders when mute 
 | User profile | Encrypted MMKV (via Zustand persist) | `auth_state` | On logout |
 | Reel list | MMKV | `reels_cache` | On refresh (replaced) |
 | Pagination metadata | MMKV | `reels_pagination` | On refresh (replaced) |
+| Video Cache Map | MMKV | `video_cache_map` | LRU eviction with disk files |
+| Video .mp4 files | Device Disk Cache | `RNFS.CachesDirectoryPath/reels/` | Oldest evicted past 15 files |
 | Conversations | MMKV | `conversations_cache` | On new load (replaced) |
 | Messages per conversation | MMKV | `messages_{conversationId}` | Rolling window of last 50 messages |
 | User preferences | MMKV (via Zustand persist) | `user_preferences` | Never evicted |
 | Recent searches | Zustand in-memory only | — | App session only |
 
-**What is NOT persisted:**
+**What is NOT persisted in MMKV:**
+- Large binary blobs (video files are stored on disk, NEVER as raw strings in MMKV)
 - Playback states (ephemeral per session)
 - Typing indicators (real-time only)
 - Socket connection state
@@ -80,13 +99,14 @@ const isMuted = useReelsStore(selectIsMuted);      // only re-renders when mute 
 
 ```
 App Launch
-    → hydrateFromCache() — show cached reels instantly
-    → loadInitialReels() — fetch page 1 (5 reels) from API
+    → hydrateFromCache() — show cached reels instantly (frame 0)
+    → loadInitialReels() — fetch page 1 (5 reels) from API & trigger background caching
     → Store in Zustand + persist to MMKV
 
-User scrolls to reel 2–3 (REELS_PREFETCH_THRESHOLD = 3 from end)
+User scrolls to reel (REELS_PREFETCH_THRESHOLD = 3 from end)
     → checkAndFetchMore() detects threshold crossed
     → fetchMoreReels() called — guarded by isFetchingMore flag
+    → cacheReelVideos() predicts and preloads next 1–2 reels ahead of current index
     → New reels appended with deduplication (Set-based ID check)
     → MMKV updated (accumulated reels)
 ```
@@ -102,10 +122,11 @@ User scrolls to reel 2–3 (REELS_PREFETCH_THRESHOLD = 3 from end)
 ## 5. Offline-First Approach
 
 **Reels offline flow:**
-1. On launch: `hydrateFromCache()` loads cached reels synchronously from MMKV
-2. If online: fetch fresh reels, update MMKV cache
-3. If offline: cached reels are displayed immediately — no blank screen
-4. `NetworkBanner` component shows "You're offline" banner when `status === 'offline'`
+1. On launch: `hydrateFromCache()` loads cached reels synchronously from MMKV and resolves `source={{ uri }}` to local `file://` paths where cached.
+2. If online: fetch fresh reels, update MMKV cache, background-preload adjacent `.mp4` video files.
+3. If offline: cached reels are displayed immediately — no blank screen. Cached videos play locally with 0ms latency.
+4. If a reel's metadata is in MMKV but the video was not yet cached before going offline, a graceful "Offline Mode — Video not cached" state is displayed with the cached poster rather than an infinite spinner.
+5. `NetworkBanner` component shows "You're offline" banner when `status === 'offline'`.
 
 **Chat offline flow:**
 1. Conversations loaded from MMKV at chat list mount

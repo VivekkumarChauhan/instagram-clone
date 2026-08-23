@@ -37,17 +37,26 @@ interface ReelsStore extends ReelsServerState, ReelUIState {
 
 const getInitialReels = (): Reel[] => {
   try {
+    const rawZustand = getItem<{ state?: { reels?: Reel[] } }>('lumigram-reels-storage');
+    if (rawZustand?.state?.reels && Array.isArray(rawZustand.state.reels) && rawZustand.state.reels.length > 0) {
+      return rawZustand.state.reels;
+    }
     const cached = getItem<Reel[]>(MMKV_REELS_KEY);
-    return Array.isArray(cached) && cached.length > 0 ? cached : [];
-  } catch {
-    return [];
-  }
+    if (Array.isArray(cached) && cached.length > 0) {
+      return cached;
+    }
+  } catch {}
+  return [];
 };
 
 const getInitialPagination = (): ReelsPaginationState => {
   try {
+    const rawZustand = getItem<{ state?: { pagination?: ReelsPaginationState } }>('lumigram-reels-storage');
+    if (rawZustand?.state?.pagination) {
+      return rawZustand.state.pagination;
+    }
     const cached = getItem<ReelsPaginationState>(MMKV_REELS_PAGINATION_KEY);
-    if (cached && typeof cached === 'object') return cached;
+    if (cached) return cached;
   } catch {}
   return {
     nextCursor: null,
@@ -74,17 +83,8 @@ export const useReelsStore = create<ReelsStore>()(
       ...DEFAULT_UI,
 
       hydrateFromCache: () => {
-        // Cache-bust: if version changed, clear stale data
-        const storedVersion = getItem<number>(MMKV_CACHE_VERSION_KEY);
-        if (storedVersion !== CACHE_VERSION) {
-          setItem(MMKV_REELS_KEY, null);
-          setItem(MMKV_REELS_PAGINATION_KEY, null);
-          setItem(MMKV_CACHE_VERSION_KEY, CACHE_VERSION);
-          console.log('[ReelsStore] Cache version changed — cleared stale reels cache');
-          return;
-        }
-        const cached = getItem<Reel[]>(MMKV_REELS_KEY);
-        const pagination = getItem<ReelsPaginationState>(MMKV_REELS_PAGINATION_KEY);
+        const cached = getInitialReels();
+        const pagination = getInitialPagination();
         if (cached && cached.length > 0) {
           set({ reels: cached });
         }

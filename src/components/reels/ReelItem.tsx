@@ -211,6 +211,14 @@ export const ReelItem: React.FC<ReelItemProps> = memo(({
           paused={!isActive || isPaused}
           muted={isMuted}
           rate={is2xSpeed ? 2.0 : 1.0}
+          poster={reel.thumbnailUrl}
+          posterResizeMode="cover"
+          bufferConfig={{
+            minBufferMs: 2500,
+            maxBufferMs: 5000,
+            bufferForPlaybackMs: 500,
+            bufferForPlaybackAfterRebufferMs: 1000,
+          }}
           onLoad={(d) => {
             handleLoad(d);
             setIsBuffering(false);

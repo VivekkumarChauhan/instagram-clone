@@ -1,6 +1,7 @@
 export interface ReelAuthor {
   id: string;
   username: string;
+  fullName?: string;
   profilePicture: string;
   isVerified: boolean;
   isFollowing: boolean;
@@ -14,11 +15,12 @@ export interface Reel {
   author: ReelAuthor;
   likesCount: number;
   commentsCount: number;
-  sharesCount: number;
+  sharesCount?: number;
   isLiked: boolean;
-  duration: number;
+  duration?: number;
   createdAt: string;
   audioName?: string;
+  audioTitle?: string;
 }
 
 export interface ReelsPage {

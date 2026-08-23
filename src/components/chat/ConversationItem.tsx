@@ -82,7 +82,13 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
 
       <View style={styles.rightAction}>
         {hasUnread ? (
-          <View style={styles.unreadBlueDot} />
+          unreadCount > 1 ? (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          ) : (
+            <View style={styles.unreadBlueDot} />
+          )
         ) : (
           <TouchableOpacity style={styles.cameraBtn} onPress={onPress}>
             <Icon name="camera-outline" size={24} color={COLORS.textSecondary} />
@@ -148,18 +154,18 @@ const styles = StyleSheet.create({
   },
   lastMessageBold: {
     color: COLORS.textPrimary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   timeDot: {
     color: COLORS.textMuted,
     fontSize: 13,
   },
   timeDotUnread: {
-    color: COLORS.primary,
+    color: '#0095F6',
     fontWeight: '600',
   },
   typing: {
-    color: COLORS.primary,
+    color: '#0095F6',
     fontSize: 13,
     fontStyle: 'italic',
   },
@@ -172,7 +178,21 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#0095F6',
+  },
+  unreadBadge: {
+    backgroundColor: '#0095F6',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   cameraBtn: {
     padding: 4,

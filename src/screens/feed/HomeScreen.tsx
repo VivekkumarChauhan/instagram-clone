@@ -105,7 +105,7 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
           activeOpacity={0.9}
           onPress={() => {
             setCurrentIndex(index);
-            navigation.navigate('Reels');
+            navigation.navigate('Reels', { initialIndex: index });
           }}
         >
           <Image
@@ -129,7 +129,13 @@ export const HomeScreen: React.FC<MainTabScreenProps<'Feed'>> = ({ navigation })
               solid={item.isLiked}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Reels')}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => {
+              setCurrentIndex(index);
+              navigation.navigate('Reels', { initialIndex: index });
+            }}
+          >
             <FontAwesome5 name="comment" size={20} color={THEME.colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('ChatTab')}>

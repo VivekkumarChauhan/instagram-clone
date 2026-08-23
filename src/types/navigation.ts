@@ -20,7 +20,7 @@ export type MainTabParamList = {
   Feed: undefined;
   Explore: undefined;
   Create: undefined;
-  Reels: undefined;
+  Reels: { initialIndex?: number } | undefined;
   ChatTab: undefined;
   Profile: undefined;
 };

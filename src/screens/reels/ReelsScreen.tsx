@@ -22,7 +22,7 @@ import { useNetwork } from '@hooks/useNetwork';
 import { useAppState } from '@hooks/useAppState';
 import type { Reel } from '@appTypes/reels';
 
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useIsFocused, useRoute, RouteProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '@appTypes/navigation';
 import { Text, TouchableOpacity } from 'react-native';
@@ -34,6 +34,7 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 export const ReelsScreen: React.FC = () => {
   const [containerHeight, setContainerHeight] = useState(SCREEN_HEIGHT - 60);
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const route = useRoute<RouteProp<MainTabParamList, 'Reels'>>();
   const isFocused = useIsFocused();
   const reels = useReelsStore(selectReels);
   const currentIndex = useReelsStore(selectCurrentIndex);
@@ -51,6 +52,22 @@ export const ReelsScreen: React.FC = () => {
   useEffect(() => {
     loadInitialReels();
   }, [loadInitialReels]);
+
+  // Synchronize FlatList scroll position to target index when screen gains focus
+  useEffect(() => {
+    const targetIdx = route.params?.initialIndex !== undefined ? route.params.initialIndex : currentIndex;
+    if (isFocused && reels.length > 0 && targetIdx >= 0 && targetIdx < reels.length) {
+      setCurrentIndex(targetIdx);
+      const timer = setTimeout(() => {
+        try {
+          listRef.current?.scrollToIndex({ index: targetIdx, animated: false });
+        } catch (_) {
+          listRef.current?.scrollToOffset({ offset: targetIdx * containerHeight, animated: false });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused, route.params?.initialIndex, reels.length, containerHeight]);
 
   useAppState(
     useCallback(() => {
@@ -120,7 +137,7 @@ export const ReelsScreen: React.FC = () => {
         if (height > 0) setContainerHeight(height);
       }}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
       <NetworkBanner />
       <FlatList
         ref={listRef}

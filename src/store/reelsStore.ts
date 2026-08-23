@@ -35,6 +35,66 @@ interface ReelsStore extends ReelsServerState, ReelUIState {
   hydrateFromCache: () => void;
 }
 
+const DEFAULT_SEED_REELS: Reel[] = [
+  {
+    id: 'seed-reel-1',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600',
+    caption: 'Tokyo Cyberpunk Nights 🌸✨ #tokyo #cyberpunk #lumigram',
+    likesCount: 1420,
+    commentsCount: 88,
+    isLiked: false,
+    author: {
+      id: 'lumix_official',
+      username: 'lumix_japan',
+      fullName: 'Lumix Tokyo',
+      profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+      isVerified: true,
+      isFollowing: false,
+    },
+    audioTitle: 'Tokyo Night Drive • Original Audio',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'seed-reel-2',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600',
+    caption: 'Lost in the mountains 🏔️ Adventure never stops! #explore',
+    likesCount: 3820,
+    commentsCount: 210,
+    isLiked: true,
+    author: {
+      id: 'alex_travels',
+      username: 'alex.adventures',
+      fullName: 'Alex Vance',
+      profilePicture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+      isVerified: true,
+      isFollowing: true,
+    },
+    audioTitle: 'Mountain Air • Vance Beats',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'seed-reel-3',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600',
+    caption: 'Golden hour sunset vibes by the beach 🌊🌅 #sunset #vibes',
+    likesCount: 9540,
+    commentsCount: 432,
+    isLiked: false,
+    author: {
+      id: 'maya_sunset',
+      username: 'maya.world',
+      fullName: 'Maya Lin',
+      profilePicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+      isVerified: false,
+      isFollowing: false,
+    },
+    audioTitle: 'Sunset Waves • Chillhop Vibes',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 const getInitialReels = (): Reel[] => {
   try {
     const rawZustand = getItem<{ state?: { reels?: Reel[] } }>('lumigram-reels-storage');
@@ -46,7 +106,11 @@ const getInitialReels = (): Reel[] => {
       return cached;
     }
   } catch {}
-  return [];
+  // Persist default seed reels into MMKV immediately
+  try {
+    setItem(MMKV_REELS_KEY, DEFAULT_SEED_REELS);
+  } catch {}
+  return DEFAULT_SEED_REELS;
 };
 
 const getInitialPagination = (): ReelsPaginationState => {

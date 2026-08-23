@@ -152,7 +152,11 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
           )}
 
           {/* Digits Container with absolute transparent input on top */}
-          <View style={styles.digitsWrapper}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => inputRef.current?.focus()}
+            style={styles.digitsWrapper}
+          >
             <View style={styles.digitsRow} pointerEvents="none">
               {[0, 1, 2, 3, 4, 5].map((index) => {
                 const char = otp[index] || '';
@@ -186,7 +190,7 @@ export const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) =>
               autoFocus
               caretHidden
             />
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
@@ -359,6 +363,8 @@ const styles = StyleSheet.create({
     opacity: 0.01,
     color: 'transparent',
     backgroundColor: 'transparent',
+    zIndex: 10,
+    elevation: 10,
   },
   verifyBtn: {
     height: 50,

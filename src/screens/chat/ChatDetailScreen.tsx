@@ -59,13 +59,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [conversationId, loadMessages, setActiveConversation]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 100);
-    }
-  }, [messages.length]);
+  const invertedMessages = React.useMemo(() => [...messages].reverse(), [messages]);
 
   const handleSend = useCallback(() => {
     const text = inputText.trim();
@@ -73,7 +67,6 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setInputText('');
     chatSocket.emitTyping(conversationId, false);
     sendMessage(conversationId, text);
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, [inputText, conversationId, sendMessage]);
 
   const handleTextChange = useCallback(
@@ -127,7 +120,7 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
-      {/* Instagram-style Chat Header with proper Android Top Inset */}
+      {/* Instagram-style Chat Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -164,15 +157,14 @@ export const ChatDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={invertedMessages}
           renderItem={renderMessageBubble}
           keyExtractor={(item, index) => item.id || `msg-${index}`}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          inverted
           onEndReached={() => {
             if (hasMore && !isLoadingMore) loadMoreMessages(conversationId);
           }}
-          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+          ListHeaderComponent={isTyping ? <TypingIndicator /> : null}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.messageListContent}
           keyboardShouldPersistTaps="handled"

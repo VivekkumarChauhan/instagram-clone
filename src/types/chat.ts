@@ -21,11 +21,13 @@ export interface Message {
 export interface Conversation {
   id: string;
   participants: MessageSender[];
+  participantDetails?: MessageSender[];
   lastMessage: Message | null;
   unreadCount: number;
   isOnline: boolean;
   isTyping: boolean;
   updatedAt: string;
+  createdAt?: string;
 }
 
 export interface SendMessageRequest {

@@ -62,6 +62,7 @@ interface ChatActions {
   addRecentSearch: (user: UserSearchResult) => void;
   hydrateFromCache: () => void;
   markConversationRead: (conversationId: string) => void;
+  reset: () => void;
 }
 
 type ChatStore = ChatServerState & MessagesState & ChatUIState & SearchState & ChatActions;
@@ -406,6 +407,27 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       ),
       unreadCountByConversation: { ...state.unreadCountByConversation, [conversationId]: 0 },
     }));
+  },
+
+  reset: () => {
+    socketClient.disconnect();
+    set({
+      conversations: [],
+      conversationsCursor: null,
+      hasMoreConversations: true,
+      isLoadingConversations: false,
+      messagesByConversation: {},
+      cursorByConversation: {},
+      hasMoreByConversation: {},
+      activeConversationId: null,
+      typingByConversation: {},
+      unreadCountByConversation: {},
+      searchResults: [],
+      searchQuery: '',
+      isSearching: false,
+      searchError: null,
+      recentSearches: [],
+    });
   },
 }));
 

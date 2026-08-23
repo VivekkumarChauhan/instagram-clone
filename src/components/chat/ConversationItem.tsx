@@ -38,11 +38,20 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
     otherUser.profilePicture ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
 
-  const unreadCount = useChatStore(
-    s => s.unreadCountByConversation[conversation.id] ?? conversation.unreadCount ?? 0,
-  );
+  const convId = conversation.id || (conversation as any)._id;
+  const storeUnread = useChatStore(s => s.unreadCountByConversation[convId]);
+
+  let unreadCount = 0;
+  if (typeof storeUnread === 'number') {
+    unreadCount = storeUnread;
+  } else if (typeof conversation.unreadCount === 'number') {
+    unreadCount = conversation.unreadCount;
+  } else if (conversation.unreadCount && typeof conversation.unreadCount === 'object') {
+    unreadCount = (conversation.unreadCount as any)[sessionUserId || ''] || 0;
+  }
+
   const isTyping = useChatStore(
-    s => s.typingByConversation[conversation.id] ?? false,
+    s => s.typingByConversation[convId] ?? false,
   );
   const hasUnread = unreadCount > 0;
 
@@ -87,7 +96,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = memo(({ convers
               <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
             </View>
           ) : (
-            <View style={styles.unreadBlueDot} />
+            <View style={styles.unreadRedDot} />
           )
         ) : (
           <TouchableOpacity style={styles.cameraBtn} onPress={onPress}>
@@ -174,14 +183,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  unreadBlueDot: {
+  unreadRedDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#0095F6',
+    backgroundColor: '#FF3B30',
   },
   unreadBadge: {
-    backgroundColor: '#0095F6',
+    backgroundColor: '#FF3B30',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,

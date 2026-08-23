@@ -204,7 +204,52 @@ async function sendOtpEmail(toEmail, otp) {
     }
   }
 
-  // 2. Resend HTTPS API (Works 100% on Render Free Cloud over Port 443)
+  // 1. Nodemailer SMTP (Gmail service / port 587 with app password)
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+
+  if (smtpUser && smtpPass && nodemailer) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: smtpUser, pass: smtpPass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 10000,
+      });
+      await transporter.sendMail({
+        from: `"Lumigram" <${smtpUser}>`,
+        to: toEmail,
+        subject: `${otp} is your Lumigram verification code`,
+        html: htmlContent,
+      });
+      console.log(`✅ [EMAIL:SMTP] OTP email delivered to ${toEmail}`);
+      return;
+    } catch (err) {
+      console.error(`⚠️ [EMAIL:SMTP] Gmail service error:`, err.message);
+      try {
+        const transporter587 = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: parseInt(process.env.SMTP_PORT, 10) || 587,
+          secure: false,
+          auth: { user: smtpUser, pass: smtpPass },
+          tls: { rejectUnauthorized: false },
+          connectionTimeout: 10000,
+        });
+        await transporter587.sendMail({
+          from: `"Lumigram" <${smtpUser}>`,
+          to: toEmail,
+          subject: `${otp} is your Lumigram verification code`,
+          html: htmlContent,
+        });
+        console.log(`✅ [EMAIL:SMTP:587] OTP email delivered to ${toEmail}`);
+        return;
+      } catch (err587) {
+        console.error(`⚠️ [EMAIL:SMTP:587] Port 587 error:`, err587.message);
+      }
+    }
+  }
+
+  // 2. Resend HTTPS API (Fallback for cloud environments)
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
@@ -230,35 +275,6 @@ async function sendOtpEmail(toEmail, otp) {
     } catch (err) {
       console.log(`⚠️ [EMAIL:RESEND] Request error:`, err.message);
     }
-  }
-
-  // 2. Nodemailer SMTP (For Local Development or Unrestricted Cloud)
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASSWORD;
-
-  if (smtpUser && smtpPass && nodemailer) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: { user: smtpUser, pass: smtpPass },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-      });
-      await transporter.sendMail({
-        from: `"Lumigram" <${smtpUser}>`,
-        to: toEmail,
-        subject: `${otp} is your Lumigram verification code`,
-        html: htmlContent,
-      });
-      console.log(`✅ [EMAIL:SMTP] OTP email delivered to ${toEmail}`);
-      return;
-    } catch (err) {
-      console.error(`⚠️ [EMAIL:SMTP] Failed to send email (Render blocks outbound SMTP port 465):`, err.message);
-    }
-  } else {
-    console.log(`⚠️ [EMAIL] SMTP not configured — OTP logged above for testing`);
   }
 }
 

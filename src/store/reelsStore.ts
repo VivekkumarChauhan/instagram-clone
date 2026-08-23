@@ -81,15 +81,15 @@ export const useReelsStore = create<ReelsStore>()(
       },
 
       loadInitialReels: async () => {
-        const { isLoading } = get();
+        const { isLoading, reels } = get();
         if (isLoading) return;
 
-        get().hydrateFromCache();
-        const hasCached = get().reels.length > 0;
-
-        if (!hasCached) {
-          set({ isLoading: true, error: null });
+        // If reels are already cached in MMKV local storage, don't show any loader or re-fetch!
+        if (reels && reels.length > 0) {
+          return;
         }
+
+        set({ isLoading: true, error: null });
 
         try {
           const page = await reelsApi.fetchReels(null, REELS_PAGE_SIZE);

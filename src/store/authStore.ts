@@ -50,6 +50,10 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const session = await authApi.login(request);
           saveTokens(session.tokens.accessToken, session.tokens.refreshToken);
+          try {
+            const { useChatStore } = require('./chatStore');
+            useChatStore.getState().reset();
+          } catch (_) {}
           set({ user: session.user, status: 'authenticated', isLoading: false, error: null });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Login failed';
@@ -80,6 +84,10 @@ export const useAuthStore = create<AuthStore>()(
           } else if (res.token) {
             saveTokens(res.token, res.token);
           }
+          try {
+            const { useChatStore } = require('./chatStore');
+            useChatStore.getState().reset();
+          } catch (_) {}
           if (res.user) {
             set({ user: res.user, status: 'authenticated', isLoading: false, error: null });
           } else {
@@ -110,6 +118,10 @@ export const useAuthStore = create<AuthStore>()(
           await authApi.logout();
         } finally {
           clearTokens();
+          try {
+            const { useChatStore } = require('./chatStore');
+            useChatStore.getState().reset();
+          } catch (_) {}
           set({ user: null, status: 'unauthenticated', isLoading: false, error: null });
         }
       },
